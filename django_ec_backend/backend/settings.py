@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,7 +34,7 @@ ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS_str.split(',')] if ALLOWED_HOS
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-    
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -107,6 +108,14 @@ DATABASES = {
     }
 }
 
+# Render（本番環境）の環境変数 DATABASE_URL が存在する場合のみ、設定をPostgreSQLで上書きする
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES['default'] = dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=True
+    )
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
