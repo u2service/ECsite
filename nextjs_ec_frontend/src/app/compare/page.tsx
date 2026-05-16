@@ -6,7 +6,8 @@ import Link from 'next/link';
 // 1. 商品データを取得する関数
 async function fetchProducts(ids: string[]): Promise<Product[]> {
   const idQuery = ids.join(',');
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const API_BASE = 'https://ecsite-ja8l.onrender.com'
   const url = `${API_BASE}/api/products/compare/?ids=${idQuery}`;
   console.log("Djangoにリクエスト送信中:", url); // ターミナルに表示されます
 
