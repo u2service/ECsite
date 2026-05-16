@@ -46,6 +46,7 @@ export default async function ComparePage({ searchParams }: Props) {
   const params = await searchParams;
   const idsString = params.ids || ""; // "1,2,3" という文字列
   const idArray = idsString.split(',').filter(id => id !== "");
+  console.log("ここまでOK")
   
   if (!idsString) {
     return <div className="p-10 text-red-500">比較する商品が選択されていません。</div>;
