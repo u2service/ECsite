@@ -167,7 +167,9 @@ STATICFILES_DIRS = [
 #     'http://127.0.0.1:3000', # 追加
 # ]
 
-
+CORS_ALLOWED_ORIGINS = [
+    "https://e-csite-neon.vercel.app",
+]
 
 # .envから文字列として取得 (例: "https://example.com,https://www.example.com")
 raw_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
