@@ -28,7 +28,8 @@ async function fetchProducts(ids: string[]): Promise<Product[]> {
 
 // 2. カテゴリ項目定義を取得する関数
 async function fetchSpecDefinitions(categoryId: number): Promise<SpecDefinition[]> {
-  const res = await fetch(`http://127.0.0.1:8000/api/category-specs/${categoryId}/`, {
+  // const res = await fetch(`http://127.0.0.1:8000/api/category-specs/${categoryId}/`, {
+  const res = await fetch(`https://ecsite-ja8l.onrender.com/api/category-specs/${categoryId}/`, {
     cache: 'no-store',
   });
   if (!res.ok) return [];
@@ -46,7 +47,6 @@ export default async function ComparePage({ searchParams }: Props) {
   const params = await searchParams;
   const idsString = params.ids || ""; // "1,2,3" という文字列
   const idArray = idsString.split(',').filter(id => id !== "");
-  console.log("ここまでOK")
   
   if (!idsString) {
     return <div className="p-10 text-red-500">比較する商品が選択されていません。</div>;
