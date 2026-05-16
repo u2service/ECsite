@@ -6,8 +6,7 @@ import Link from 'next/link';
 // 1. 商品データを取得する関数
 async function fetchProducts(ids: string[]): Promise<Product[]> {
   const idQuery = ids.join(',');
-  // const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-  const API_BASE = 'https://ecsite-ja8l.onrender.com'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
   const url = `${API_BASE}/api/products/compare/?ids=${idQuery}`;
   console.log("Djangoにリクエスト送信中:", url); // ターミナルに表示されます
 
@@ -28,8 +27,9 @@ async function fetchProducts(ids: string[]): Promise<Product[]> {
 
 // 2. カテゴリ項目定義を取得する関数
 async function fetchSpecDefinitions(categoryId: number): Promise<SpecDefinition[]> {
-  // const res = await fetch(`http://127.0.0.1:8000/api/category-specs/${categoryId}/`, {
-  const res = await fetch(`https://ecsite-ja8l.onrender.com/api/category-specs/${categoryId}/`, {
+  // 商品取得と同じ環境変数を指定（なければローカルの 8000 を使う）
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const res = await fetch(`${API_BASE}/api/category-specs/${categoryId}/`, {
     cache: 'no-store',
   });
   if (!res.ok) return [];
