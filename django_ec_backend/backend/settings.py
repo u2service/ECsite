@@ -167,17 +167,18 @@ STATICFILES_DIRS = [
 #     'http://127.0.0.1:3000', # 追加
 # ]
 
+# 1. コードに直接書く許可URL（ローカル開発用や特定の固定URL）
 CORS_ALLOWED_ORIGINS = [
     "https://e-csite-neon.vercel.app",
 ]
 
-# .envから文字列として取得 (例: "https://example.com,https://www.example.com")
+# 2. 環境変数からURLを読み込む
 raw_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
-
-# カンマで分割してリスト化。
-# strip() を入れることで、万が一 .env にスペースが入っていても除去できます。
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in raw_origins.split(",") if origin]
-
+if raw_origins:
+    env_origins = [origin.strip() for origin in raw_origins.split(",") if origin]
+    # 3. 直接書いたリストに、環境変数のリストを追加（結合）する
+    CORS_ALLOWED_ORIGINS.extend(env_origins)
+    
 # CSRFの信頼済みオリジンを設定 (Django 4.0以降で必須)
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_origins.split(",") if origin]
 
