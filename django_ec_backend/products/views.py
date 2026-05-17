@@ -2,6 +2,9 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.authentication import SessionAuthentication
+from rest_framework import status
+
 from .models import (
     Product, Cart, CartItem, Order, OrderItem, Category,
     CategorySpecField
@@ -71,6 +74,8 @@ class CartViewSet(viewsets.ViewSet):
     - GET /api/cart/: 自分のカート情報を取得
     - POST /api/cart/add-item/: カートに商品を追加
     """
+    # ★ ここに認証クラスを明示的に追加（SessionAuthenticationを最優先にする）
+    authentication_classes = [SessionAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     # GET /api/cart/ にアクセスした際にCSRF Cookieを発行するようにする
     @method_decorator(ensure_csrf_cookie)
@@ -113,6 +118,8 @@ class CartItemViewSet(viewsets.ModelViewSet):
     """
     queryset = CartItem.objects.all()
     serializer_class = CartItemSerializer
+    # ★ ここに認証クラスを明示的に追加（SessionAuthenticationを最優先にする）
+    authentication_classes = [SessionAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
