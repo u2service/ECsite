@@ -299,3 +299,10 @@ ADMINS = [
 
 # 管理者メールの送信元アドレス
 SERVER_EMAIL = 'admin@example.com'
+
+# クロスドメインでのCookie送信を許可するための設定
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
