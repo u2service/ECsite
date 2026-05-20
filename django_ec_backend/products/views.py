@@ -66,13 +66,8 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             )
         
         return queryset
-
-# ★ 1. CSRFチェックをスキップするカスタム認証クラスを作成
-class UnsafeSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return  # 何もしない（CSRFチェックを免除）
-
 # --- ▼ カート操作のためのViewSetを追加 ▼ ---
+
 class CartViewSet(viewsets.ViewSet):
     """
     カート情報を管理するAPIビュー
@@ -80,8 +75,7 @@ class CartViewSet(viewsets.ViewSet):
     - POST /api/cart/add-item/: カートに商品を追加
     """
     # ★ ここに認証クラスを明示的に追加（SessionAuthenticationを最優先にする）
-    # authentication_classes = [SessionAuthentication]
-    authentication_classes = [UnsafeSessionAuthentication]
+    authentication_classes = [SessionAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     # GET /api/cart/ にアクセスした際にCSRF Cookieを発行するようにする
     @method_decorator(ensure_csrf_cookie)
@@ -125,8 +119,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
     queryset = CartItem.objects.all()
     serializer_class = CartItemSerializer
     # ★ ここに認証クラスを明示的に追加（SessionAuthenticationを最優先にする）
-    # authentication_classes = [SessionAuthentication]
-    authentication_classes = [UnsafeSessionAuthentication]
+    authentication_classes = [SessionAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
