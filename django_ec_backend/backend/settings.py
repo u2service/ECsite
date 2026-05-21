@@ -212,6 +212,11 @@ REST_AUTH = {
   'JWT_AUTH_COOKIE_USE_CSRF': True, # CSRF対策を有効にする
   'REGISTER_SERIALIZER': 'products.serializers.CustomRegisterSerializer',
 
+  # ▼▼ ここから重要：この2行を追記します ▼▼
+  'SESSION_LOGIN': False,  # サーバーレス運用なのでセッションログインを無効化
+  'TOKEN_MODEL': None,     # authtokenアプリ（DBトークン）を使わないように指定
+  # ▲▲ ここまで追記 ▲▲
+
   # ▼ パスワードリセットメールのURLをフロントエンドのパスに設定 ▼
   'PASSWORD_RESET_CONFIRM_URL': 'password-reset-confirm/{uid}/{token}',
 
