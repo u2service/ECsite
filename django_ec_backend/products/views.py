@@ -20,7 +20,6 @@ import os
 import stripe
 from django.conf import settings
 from django.http import JsonResponse
-from rest_framework.views import APIView
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt

@@ -30,11 +30,6 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS_str = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost')
 ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS_str.split(',')] if ALLOWED_HOSTS_str else []
 
-# 環境変数からRenderのURLを読み込む
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -47,7 +42,6 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'corsheaders',
     'rest_framework',
-    'rest_framework.authtoken',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'dj_rest_auth',
@@ -170,6 +164,8 @@ STATICFILES_DIRS = [
 # 1. コードに直接書く許可URL（ローカル開発用や特定の固定URL）
 CORS_ALLOWED_ORIGINS = [
     "https://e-csite-neon.vercel.app",
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
 ]
 
 # 2. 環境変数からURLを読み込む
@@ -179,8 +175,9 @@ if raw_origins:
     # 3. 直接書いたリストに、環境変数のリストを追加（結合）する
     CORS_ALLOWED_ORIGINS.extend(env_origins)
     
-# CSRFの信頼済みオリジンを設定 (Django 4.0以降で必須)
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_origins.split(",") if origin]
+# 3. CSRFの信頼済みオリジンを設定（CORSのリストをそのままコピーする）
+# ※中身がすべて「http://」か「https://」で始まっている必要があります
+CSRF_TRUSTED_ORIGINS = [origin for origin in CORS_ALLOWED_ORIGINS]
 
 # --- ▼ 画像アップロードのための設定を追加 ▼ ---
 MEDIA_URL = '/media/'
@@ -292,17 +289,3 @@ else:
     ...
 # --- ▲ パスワードリセット用のメール設定 (開発用) ▲ ---
 
-# 管理者の名前とメールアドレスのリスト
-ADMINS = [
-    ('Admin', 'nottekesurf@gmail.com'), # 実際のあなたのアドレスに変えてもOK
-]
-
-# 管理者メールの送信元アドレス
-SERVER_EMAIL = 'admin@example.com'
-
-# クロスドメインでのCookie送信を許可するための設定
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True
-
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
