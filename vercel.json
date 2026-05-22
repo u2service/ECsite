@@ -17,6 +17,10 @@
       "dest": "django_ec_backend/backend/wsgi.py"
     },
     {
+      "src": "/admin/(.*)",
+      "dest": "django_ec_backend/backend/wsgi.py"
+    },
+    {
       "src": "/static/(.*)",
       "dest": "backend/static/$1"
     },

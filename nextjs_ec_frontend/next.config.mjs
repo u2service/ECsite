@@ -16,12 +16,21 @@ const nextConfig = {
 
   // ▼ ここからリライトの設定を追記 ▼
   async rewrites() {
+    // 本番環境（Vercel）では、環境変数からDjangoのURLを取得する。
+    // 無い場合はローカル（http://127.0.0.1:8000）をデフォルトにする。
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
     return [
       {
         // フロント（3000番）への「/api/」から始まるリクエストを
         source: "/api/:path*",
         // 裏側でローカルのDjango（8000番）に転送する
-        destination: "http://127.0.0.1:8000/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        // ▼ここが重要！管理画面へのリクエストもDjangoに転送する▼
+        source: "/admin/:path*",
+        destination: `${backendUrl}/admin/:path*`,
       },
     ];
   },
