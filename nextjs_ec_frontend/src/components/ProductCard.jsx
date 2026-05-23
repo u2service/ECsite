@@ -48,17 +48,10 @@ import { getFullImageUrl } from '@/utils/image'; // 追加
 //   );
 // }
 
-export default function ProductCard({ product }) {
+export default function ProductCard() {
   return (
-    <div className="w-[200px] border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
-      <Link href={`/products/${product.id}`}>
         <div>
-          <div className="p-4">
-            <h2 className="text-lg font-semibold truncate">{product.name}</h2>
-            <p className="text-gray-800 font-bold mt-2">¥{Number(product.price).toLocaleString()}</p>
-          </div>
+          <h1>練習</h1>
         </div>
-      </Link>
-    </div>
   );
 }
