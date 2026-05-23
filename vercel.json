@@ -22,11 +22,11 @@
     },
     {
       "src": "/static/(.*)",
-      "dest": "backend/static/$1"
+      "dest": "django_ec_backend/static/$1"
     },
     {
       "src": "/media/(.*)",
-      "dest": "backend/media/$1"
+      "dest": "django_ec_backend/media/$1"
     },
     {
       "src": "/(.*)",
