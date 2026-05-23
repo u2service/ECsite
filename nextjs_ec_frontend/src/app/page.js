@@ -9,14 +9,28 @@ async function getProducts(q = '') {
     url += `?q=${encodeURIComponent(q)}`;
   }
 
-  const res = await fetch(url, { cache: 'no-store' }); // 検索結果はキャッシュさせない
+  // 💡 安全対策：環境変数が万が一設定されていない場合のフォールバック（二重の安全策）
+  if (!process.env.NEXT_PUBLIC_API_URL) {
+    console.warn("【警告】NEXT_PUBLIC_API_URL が未定義です。空の配列を返します。");
+    return [];
+  }
+
+  // 接続エラー（Djangoがまだ起動していない等）でビルドを落とさないために try-catch で囲む
+  try {
+    const res = await fetch(url, { cache: 'no-store' }); // 検索結果はキャッシュさせない
 
   // エラーハンドリング
   if (!res.ok) {
-    throw new Error('Failed to fetch data');
-  }
+      console.error(`Djangoサーバーからエラーが返されました (Status: ${res.status})`);
+      return []; // 安全のために空の配列を返す
+    }
 
-  return res.json();
+    return await res.json();
+  } catch (error) {
+    // 💡 Vercelのビルド時は必ずここを通ります
+    console.warn("【ビルド時警告】Djangoへの接続に失敗しました。本番起動後に通信可能になります:", error.message);
+    return []; // クラッシュさせずに空の配列を返すことで、Next.jsにビルドを通過させます
+  }
 }
 
 export default async function Home({ searchParams }) {
