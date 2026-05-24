@@ -475,13 +475,24 @@ class CategorySpecView(APIView):
 def create_admin_view(request):
     User = get_user_model()
     
-    # 既に同じユーザー名がないかチェック
-    if not User.objects.filter(username="admin_user").exists():
-        User.objects.create_superuser(
-            username="nottekekanri88",
-            email="nottekesurf@gmail.com",
-            password="1709p8TviNB6qjX8Arx_Iw"  # 任意の強いパスワードに変えてください
-        )
-        return JsonResponse({"status": "success", "message": "Admin user created successfully!"})
+    # ユーザー名「admin_user」を検索、なければ新しく作る
+    user, created = User.objects.get_or_create(
+        username="nottekekanri88",
+        defaults={
+            "email": "nottekesurf@gmail.com",
+        }
+    )
     
-    return JsonResponse({"status": "exists", "message": "Admin user already exists."})
+    # パスワードを再設定（念のため確実なものに）
+    user.set_password("1709p8TviNB6qjX8Arx_Iw")  # 先ほど使ったパスワード
+    
+    # 🚨 ここが重要！両方の権限を強制的に True にします
+    user.is_superuser = True
+    user.is_staff = True  # ← これでスタッフアカウントのチェックを突破します
+    
+    user.save()
+    
+    if created:
+        return JsonResponse({"status": "success", "message": "Admin user created with full staff permissions!"})
+    else:
+        return JsonResponse({"status": "updated", "message": "Admin user permissions forced to True!"})
