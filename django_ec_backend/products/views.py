@@ -471,28 +471,3 @@ class CategorySpecView(APIView):
         except Category.DoesNotExist:
             return Response([], status=status.HTTP_404_NOT_FOUND)
 
-@csrf_exempt
-def create_admin_view(request):
-    User = get_user_model()
-    
-    # ユーザー名「admin_user」を検索、なければ新しく作る
-    user, created = User.objects.get_or_create(
-        username="nottekekanri88",
-        defaults={
-            "email": "nottekesurf@gmail.com",
-        }
-    )
-    
-    # パスワードを再設定（念のため確実なものに）
-    user.set_password("1709p8TviNB6qjX8Arx_Iw")  # 先ほど使ったパスワード
-    
-    # 🚨 ここが重要！両方の権限を強制的に True にします
-    user.is_superuser = True
-    user.is_staff = True  # ← これでスタッフアカウントのチェックを突破します
-    
-    user.save()
-    
-    if created:
-        return JsonResponse({"status": "success", "message": "Admin user created with full staff permissions!"})
-    else:
-        return JsonResponse({"status": "updated", "message": "Admin user permissions forced to True!"})
