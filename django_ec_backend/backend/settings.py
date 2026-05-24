@@ -160,15 +160,15 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 # これを追加！ (プロジェクトのルート直下の 'staticfiles' というフォルダに集める設定)
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'staticfiles')
 
 # すでにある場合はそのままでOK
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static'),
 ]
 
 # Whitenoiseに、集めた静的ファイルを圧縮して効率よく配信させるためのストレージ設定
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # ファイルの末尾に、以下の設定を追記
 # CORS_ALLOWED_ORIGINS = [
