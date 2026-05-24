@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.http import HttpResponse
 from django.contrib.auth.models import User
+from products import views as product_views  # productsのviewsをインポート
 
 # 👇 1回だけ管理者を作るための一時的なプログラム
 def create_admin_temporary(request):
@@ -21,8 +22,5 @@ def create_admin_temporary(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
-    
-    # 🚨 👇 ここに直接追加します。Vercel経由で叩きやすいように、先頭に 'api/' を付けておくとより確実です
-    path('api/create-my-admin-secret-xyz/', create_admin_temporary),
+    path('api/create-my-admin-secret-xyz/', product_views.create_admin_view),
 ]

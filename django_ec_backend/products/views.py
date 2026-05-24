@@ -19,6 +19,7 @@ from .serializers import (
 import os
 import stripe
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 
 from django.utils.decorators import method_decorator
@@ -470,3 +471,17 @@ class CategorySpecView(APIView):
         except Category.DoesNotExist:
             return Response([], status=status.HTTP_404_NOT_FOUND)
 
+@csrf_exempt
+def create_admin_view(request):
+    User = get_user_model()
+    
+    # 既に同じユーザー名がないかチェック
+    if not User.objects.filter(username="admin_user").exists():
+        User.objects.create_superuser(
+            username="admin_user",
+            email="admin@example.com",
+            password="your-secure-password-123"  # 任意の強いパスワードに変えてください
+        )
+        return JsonResponse({"status": "success", "message": "Admin user created successfully!"})
+    
+    return JsonResponse({"status": "exists", "message": "Admin user already exists."})
