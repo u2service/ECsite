@@ -22,5 +22,4 @@ def create_admin_temporary(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/create-my-admin-secret-xyz/', product_views.create_admin_view),
 ]
