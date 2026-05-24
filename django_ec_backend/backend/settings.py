@@ -167,6 +167,9 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
+# Whitenoiseに、集めた静的ファイルを圧縮して効率よく配信させるためのストレージ設定
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # ファイルの末尾に、以下の設定を追記
 # CORS_ALLOWED_ORIGINS = [
 #     'http://localhost:3000',
