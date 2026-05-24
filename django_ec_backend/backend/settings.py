@@ -27,8 +27,9 @@ STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
 # 本番環境ではデバッグをオンにした状態で実行しないでください。
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS_str = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost', '.vercel.app',)
+ALLOWED_HOSTS_str = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost')
 ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS_str.split(',')] if ALLOWED_HOSTS_str else []
+ALLOWED_HOSTS.append('.vercel.app')
 
 # Application definition
 
