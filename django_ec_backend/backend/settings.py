@@ -161,11 +161,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 # これを追加！ (プロジェクトのルート直下の 'staticfiles' というフォルダに集める設定)
-STATIC_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # すでにある場合はそのままでOK
 STATICFILES_DIRS = [
-    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static'),
+    BASE_DIR / 'static',
 ]
 
 # Whitenoiseに、集めた静的ファイルを圧縮して効率よく配信させるためのストレージ設定
