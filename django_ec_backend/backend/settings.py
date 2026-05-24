@@ -92,16 +92,28 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT'),
+#  Vercel環境（DATABASE_URL）と個別設定の両方に対応する本番仕様
+if os.environ.get('DATABASE_URL'):
+    # Neonの1本にまとまったURLがある場合は、dj-database-urlが自動でパース（解析）して接続します
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            ssl_require=True  #  Neon(クラウド)への接続には暗号化(SSL)が必須なため安全策として追加
+        )
     }
-}
+else:
+    # ローカル環境など、個別の環境変数がある場合はこちらで接続します
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME'),
+            'USER': os.environ.get('DB_USER'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST'),
+            'PORT': os.environ.get('DB_PORT'),
+        }
+    }
 
 # Render（本番環境）の環境変数 DATABASE_URL が存在する場合のみ、設定をPostgreSQLで上書きする
 DATABASE_URL = os.environ.get('DATABASE_URL')
