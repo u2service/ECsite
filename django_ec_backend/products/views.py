@@ -478,9 +478,9 @@ def create_admin_view(request):
     # 既に同じユーザー名がないかチェック
     if not User.objects.filter(username="admin_user").exists():
         User.objects.create_superuser(
-            username="admin_user",
-            email="admin@example.com",
-            password="your-secure-password-123"  # 任意の強いパスワードに変えてください
+            username="nottekekanri88",
+            email="nottekesurf@gmail.com",
+            password="1709p8TviNB6qjX8Arx_Iw"  # 任意の強いパスワードに変えてください
         )
         return JsonResponse({"status": "success", "message": "Admin user created successfully!"})
     
