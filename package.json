@@ -4,6 +4,6 @@
     "python": "3.12"
   },
   "scripts": {
-    "vercel-build": "python django_ec_backend/manage.py collectstatic --noinput"
+    "vercel-build": "cd django_ec_backend && python manage.py collectstatic --noinput"
   }
 }
