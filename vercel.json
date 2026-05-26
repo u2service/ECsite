@@ -10,7 +10,8 @@
       "use": "@vercel/python",
       "config": { 
         "maxDuration": 15,
-        "installCommand": "pip install -r requirements.txt && python django_ec_backend/manage.py migrate"
+        "installCommand": "pip install -r requirements.txt && python django_ec_backend/manage.py migrate",
+        "includeFiles": "django_ec_backend/staticfiles/**"
       }
     }
   ],
@@ -25,7 +26,7 @@
     },
     {
       "src": "/static/(.*)",
-      "dest": "staticfiles/$1"
+      "dest": "django_ec_backend/staticfiles/$1" 
     },
     {
       "src": "/media/(.*)",
