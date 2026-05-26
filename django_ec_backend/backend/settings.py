@@ -34,6 +34,7 @@ ALLOWED_HOSTS.append('.vercel.app')
 # Application definition
 
 INSTALLED_APPS = [
+    'whitenoise.runserver_nostatic',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -159,7 +160,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 # これを追加！ (プロジェクトのルート直下の 'staticfiles' というフォルダに集める設定)
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
@@ -167,6 +168,15 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Whitenoiseに、集めた静的ファイルを圧縮して効率よく配信させるためのストレージ設定
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
