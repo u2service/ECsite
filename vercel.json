@@ -25,7 +25,7 @@
     },
     {
       "src": "/static/(.*)",
-      "dest": "django_ec_backend/staticfiles/$1"
+      "dest": "staticfiles/$1"
     },
     {
       "src": "/media/(.*)",
