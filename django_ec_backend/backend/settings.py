@@ -166,7 +166,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # すでにある場合はそのままでOK
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    os.path.join(BASE_DIR / 'static')
 ]
 
 STORAGES = {
