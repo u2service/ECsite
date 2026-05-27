@@ -28,7 +28,7 @@
     },
     {
       "src": "/media/(.*)",
-      "dest": "django_ec_backend/backend/wsgi.py"
+      "dest": "django_ec_backend/media/$1"
     },
     {
       "src": "/(.*)",
