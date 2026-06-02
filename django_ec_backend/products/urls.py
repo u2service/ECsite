@@ -8,7 +8,6 @@ from .views import (
     StripeWebhookView,
     OrderViewSet,
     CategoryTreeView,
-    CategoryTemplateListView,
     ProductComparisonView,
     CategorySpecView,
 )
@@ -28,8 +27,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('create-checkout-session/', CreateCheckoutSessionView.as_view(), name='create-checkout-session'),
     path('webhook/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'), # Webhook URLを追加
-    # APIViewは .as_view() を使って直接 path に書く
-    path('api/category-templates/', CategoryTemplateListView.as_view(), name='category-templates'),
     # カテゴリごとのスペック定義を取得するエンドポイントを追加
     path('category-specs/<int:category_id>/', CategorySpecView.as_view(), name='category-specs'),
 ]

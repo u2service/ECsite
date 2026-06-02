@@ -412,18 +412,6 @@ class CategoryTreeView(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
 # --- ▲ ツリー構造を返すビューを追加 ▲ ---
 
-class CategoryTemplateListView(APIView):
-    def get(self, request):
-        # 全カテゴリと、それに紐づくスペック項目を効率よく取得
-        categories = Category.objects.prefetch_related('spec_fields').all()
-        
-        data = {}
-        for cat in categories:
-            # { "PC": {"cpu": "", "memory": ""}, "モニター": {...} } という形を作る
-            data[cat.id] = {field.field_name: "" for field in cat.spec_fields.all()}
-            
-        return Response(data)
-    
 class ProductComparisonView(APIView):
     def get(self, request):
         # query_paramsからidsを取得
