@@ -2,8 +2,6 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.authentication import SessionAuthentication
-from rest_framework import status
 
 from .models import (
     Product, Cart, CartItem, Order, OrderItem, Category,
@@ -19,7 +17,6 @@ from .serializers import (
 import os
 import stripe
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 
 from django.utils.decorators import method_decorator
@@ -33,6 +30,8 @@ from django.db.models import Q # 検索のためにインポートを追加
 from django.db import transaction
 
 from rest_framework.throttling import ScopedRateThrottle # 追記
+
+from backend.authentication import CookieJWTAuthentication
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -67,11 +66,6 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         
         return queryset
 
-# ★ 1. CSRFチェックをスキップするカスタム認証クラスを作成
-class UnsafeSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return  # 何もしない（CSRFチェックを免除）
-
 # --- ▼ カート操作のためのViewSetを追加 ▼ ---
 class CartViewSet(viewsets.ViewSet):
     """
@@ -79,9 +73,7 @@ class CartViewSet(viewsets.ViewSet):
     - GET /api/cart/: 自分のカート情報を取得
     - POST /api/cart/add-item/: カートに商品を追加
     """
-    # ★ ここに認証クラスを明示的に追加（SessionAuthenticationを最優先にする）
-    # authentication_classes = [SessionAuthentication]
-    authentication_classes = [UnsafeSessionAuthentication]
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     # GET /api/cart/ にアクセスした際にCSRF Cookieを発行するようにする
     @method_decorator(ensure_csrf_cookie)
@@ -101,6 +93,7 @@ class CartViewSet(viewsets.ViewSet):
 
         try:
             product = Product.objects.get(id=product_id)
+            
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -124,9 +117,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
     """
     queryset = CartItem.objects.all()
     serializer_class = CartItemSerializer
-    # ★ ここに認証クラスを明示的に追加（SessionAuthenticationを最優先にする）
-    # authentication_classes = [SessionAuthentication]
-    authentication_classes = [UnsafeSessionAuthentication]
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -278,9 +269,6 @@ class StripeWebhookView(APIView):
                 customer_info = None
                 if session['customer_details']:
                     customer_info = session['customer_details']
-
-                # customer_info が取得できたら、中身（名前など）を取り出す
-                # if shipping:
                     order.full_name = customer_info['name']
                     order.shipping_address = self._format_address(customer_info)
                     order.postal_code = customer_info["address"]['postal_code']
