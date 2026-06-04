@@ -3,7 +3,7 @@ from django.contrib import admin
 from mptt.admin import DraggableMPTTAdmin
 from .models import Product, Category, Brand, Cart, CartItem, Order, OrderItem, ProductImage, CategorySpecField
 
-# admin.site.register(Product)
+admin.site.register(Product)
 
 # Brand（メーカー）を管理画面に表示
 @admin.register(Brand)
@@ -64,29 +64,29 @@ class ProductImageInline(admin.TabularInline):
 
 # 既存の admin.site.register(Product) を解除して再登録するか、
 # decorator を使っている場合はそこを修正します。
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'category', 'brand', 'price', 'specifications')
-    list_filter = ('category', 'brand')
-    inlines = [ProductImageInline]
-    search_fields = ('name',)
+# @admin.register(Product)
+# class ProductAdmin(admin.ModelAdmin):
+#     list_display = ('id', 'name', 'category', 'brand', 'price', 'specifications')
+#     list_filter = ('category', 'brand')
+#     inlines = [ProductImageInline]
+#     search_fields = ('name',)
 
-    class Media:
-        # static/ 以下のパスを記述します
-        js = ('admin/js/category_template.js',)
+#     class Media:
+#         # static/ 以下のパスを記述します
+#         js = ('admin/js/category_template.js',)
         
-    def change_view(self, request, object_id, form_url='', extra_context=None):
-        # 全カテゴリとその項目を辞書形式で取得
-        categories = Category.objects.prefetch_related('spec_fields').all()
-        template_data = {
-            cat.name: {field.field_name: "" for field in cat.spec_fields.all()}
-            for cat in categories
-        }
+#     def change_view(self, request, object_id, form_url='', extra_context=None):
+#         # 全カテゴリとその項目を辞書形式で取得
+#         categories = Category.objects.prefetch_related('spec_fields').all()
+#         template_data = {
+#             cat.name: {field.field_name: "" for field in cat.spec_fields.all()}
+#             for cat in categories
+#         }
         
-        # extra_contextを使って、テンプレート（JS）にデータを渡す
-        extra_context = extra_context or {}
-        extra_context['category_templates_json'] = json.dumps(template_data)
-        return super().change_view(request, object_id, form_url, extra_context=extra_context)
+#         # extra_contextを使って、テンプレート（JS）にデータを渡す
+#         extra_context = extra_context or {}
+#         extra_context['category_templates_json'] = json.dumps(template_data)
+#         return super().change_view(request, object_id, form_url, extra_context=extra_context)
 # --- ▲ 商品の編集画面から直接複数の画像をアップロードできるようにインライン設定を追加 ▲ ---
 
 # Category の編集画面で、項目（CategorySpecField）を一緒に登録できるように Inline を使います。
