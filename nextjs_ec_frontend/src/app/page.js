@@ -19,13 +19,13 @@ async function getProducts(q = '') {
   try {
     const res = await fetch(url, { cache: 'no-store' }); // 検索結果はキャッシュさせない
 
-  // エラーハンドリング
-  if (!res.ok) {
-      console.error(`Djangoサーバーからエラーが返されました (Status: ${res.status})`);
-      return []; // 安全のために空の配列を返す
-    }
+    // エラーハンドリング
+    if (!res.ok) {
+        console.error(`Djangoサーバーからエラーが返されました (Status: ${res.status})`);
+        return []; // 安全のために空の配列を返す
+      }
 
-    return await res.json();
+      return await res.json();
   } catch (error) {
     // 💡 Vercelのビルド時は必ずここを通ります
     console.warn("【ビルド時警告】Djangoへの接続に失敗しました。本番起動後に通信可能になります:", error.message);
