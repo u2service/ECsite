@@ -32,8 +32,13 @@
       "dest": "django_ec_backend/media/$1"
     },
     {
+      "src": "/_next/(.*)",
+      "dest": "nextjs_ec_frontend/_next/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "nextjs_ec_frontend/$1"
+      "dest": "nextjs_ec_frontend/$1",
+      "check": true
     }
   ]
 }
