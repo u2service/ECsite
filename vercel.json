@@ -32,8 +32,7 @@
       "dest": "django_ec_backend/media/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "nextjs_ec_frontend/$1"
+      "handle": "filesystem"
     }
   ]
 }
