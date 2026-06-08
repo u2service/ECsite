@@ -15,8 +15,9 @@ const nextConfig = {
        // 本番環境のURLがある場合はここに追加
        {
         protocol: 'https',
-        hostname: 'e-csite-neon.vercel.app',
-        pathname: '/media/**',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
       },
      ],
   },
