@@ -4,7 +4,7 @@ import ProductClientWrapper from '@/components/ProductClientWrapper'; // 後で�
 
 async function getProduct(id) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}/`, {
-    next: { revalidate: 60 } // 1分キャッシュするなど最適化が可能
+    next: 'no-store'
   });
   if (!res.ok) return null;
   return res.json();
