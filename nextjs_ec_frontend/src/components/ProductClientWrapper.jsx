@@ -1,12 +1,14 @@
 // src/components/ProductClientWrapper.jsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { getFullImageUrl } from '@/utils/image';
 
 export default function ProductClientWrapper({ product }) {
+  // デバッグ用：実際に受け取っているデータをブラウザのコンソールに出す
+  console.log("Current Product Data:", product);
   const [selectedImage, setSelectedImage] = useState(product.image);
   const { addItemToCart } = useCart();
 
