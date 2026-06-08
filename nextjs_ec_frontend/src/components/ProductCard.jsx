@@ -30,7 +30,7 @@ export default function ProductCard({ product, isChecked, onCheckChange }) {
               alt={product.name}
               fill // 親要素に合わせて表示
               sizes="200px" // 画像サイズを最適化
-              className="object-contain"
+              className="object-cover"
               // 全件にpriorityを付けるのではなく、Next.jsの最適化に任せる
               loading="lazy"
             />
