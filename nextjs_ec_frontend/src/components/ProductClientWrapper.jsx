@@ -14,7 +14,7 @@ export default function ProductClientWrapper({ product }) {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {/* 画像エリア */}
       <div>
-        <div className="relative aspect-square w-full bg-gray-100 rounded-lg overflow-hidden">
+        <div className="relative aspect-square w-full rounded-lg overflow-hidden">
           <Image src={getFullImageUrl(selectedImage)} alt={product.name} fill className="object-contain" priority />
         </div>
         {/* サムネイル一覧 (既存のロジックをここに移植) */}
