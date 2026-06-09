@@ -98,6 +98,13 @@ rounded-lg overflow-hidden pointer-events-none"
 
       {/* 右側：商品情報・ボタン */}
       <div className="flex flex-col justify-center">
+        {/* 追加: ブランド名 */}
+        {product.brand && (
+          <p className="text-sm font-medium text-blue-600 mb-1 uppercase tracking-wider">
+            {product.brand.name}
+          </p>
+        )}
+
         <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
 
         {product.stock > 0 ? (
