@@ -1,7 +1,7 @@
 // src/components/ProductClientWrapper.jsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { getFullImageUrl } from '@/utils/image';
@@ -10,12 +10,46 @@ export default function ProductClientWrapper({ product }) {
   const [selectedImage, setSelectedImage] = useState(product.image);
   const { addItemToCart } = useCart();
 
+  // ズーム用のステート
+  const [zoomStyle, setZoomStyle] = useState({ display: 'none', backgroundPosition: '0% 0%' });
+  const containerRef = useRef(null);
+
+  // マウス移動時の処理
+  const handleMouseMove = (e) => {
+    const { left, top, width, height } = containerRef.current.getBoundingClientRect();
+    const x = ((e.pageX - left - window.scrollX) / width) * 100;
+    const y = ((e.pageY - top - window.scrollY) / height) * 100;
+
+    setZoomStyle({
+      display: 'block',
+      backgroundPosition: `${x}% ${y}%`,
+      backgroundImage: `url(${getFullImageUrl(selectedImage)})`,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setZoomStyle({ ...zoomStyle, display: 'none' });
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
       {/* 画像エリア */}
-      <div>
-        <div className="relative aspect-square w-full rounded-lg overflow-hidden">
-          <Image src={getFullImageUrl(selectedImage)} alt={product.name} fill className="object-contain" priority />
+      <div className="relative">
+
+        <div
+          ref={containerRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+
+          className="relative aspect-square w-full rounded-lg overflow-hidden cursor-crosshair border border-gray-100"
+        >
+          <Image
+            src={getFullImageUrl(selectedImage)}
+            alt={product.name}
+            fill
+            className="object-contain"
+            priority
+          />
         </div>
         {/* サムネイル一覧 (既存のロジックをここに移植) */}
         <div className="grid grid-cols-5 gap-2 mt-4">
@@ -31,6 +65,18 @@ export default function ProductClientWrapper({ product }) {
                 alt="thumbnail"
               />
             </div>
+
+        {/* 拡大画像表示エリア（右側に絶対配置） */}
+        <div
+          style={{
+            ...zoomStyle,
+            backgroundSize: '250%', // 2.5倍に拡大
+            backgroundRepeat: 'no-repeat',
+          }}
+          className="hidden md:block absolute top-0 left-full ml-4 w-full aspect-square z-40 bg-white border shadow-2xl rounded-lg overflow-hidden pointer-events-none"
+        >
+          {/* ここに背景画像として拡大されたものが表示される */}
+
             {/* product.images が存在し、かつ配列である場合のみ map を実行する */}
             {product.images && Array.isArray(product.images) && product.images.length > 0 ? (
               product.images.map((img) => (
