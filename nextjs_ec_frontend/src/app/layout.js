@@ -3,6 +3,7 @@ import Header from '@/components/Header'; // Headerをインポート
 import CategorySidebar from '@/components/CategorySidebar'; // 追加
 import { AuthProvider } from '@/context/AuthContext'; // AuthProviderをインポート
 import { CartProvider } from '@/context/CartContext'; // CartProviderをインポート
+import DisclaimerBanner from '@/components/DisclaimerBanner';
 
 export const metadata = {
   title: 'My EC Store',
@@ -15,6 +16,8 @@ export default function RootLayout({ children }) {
       <body>
         <AuthProvider>
           <CartProvider>
+              {/* ここにバナーを追加 */}
+              <DisclaimerBanner />
               <Header /> {/* ここにHeaderを配置 */}
               <div className="container mx-auto p-4 flex flex-col md:flex-row gap-6">
                 {/* サイドバーを配置 */}
