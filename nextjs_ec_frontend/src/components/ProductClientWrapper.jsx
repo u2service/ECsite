@@ -65,7 +65,7 @@ export default function ProductClientWrapper({ product }) {
             <p className="text-red-600 font-bold mb-2">申し訳ありません、現在売り切れです</p>
           )}
 
-        <p className="text-gray-600 text-lg mb-6 leading-relaxed">{product.description}</p>
+        <p className="text-gray-600 text-lg mb-6 leading-relaxed whitespace-pre-wrap">{product.description}</p>
 
         <p className="text-4xl font-bold text-red-600 mb-8">¥{Number(product.price).toLocaleString()}</p>
         <button
