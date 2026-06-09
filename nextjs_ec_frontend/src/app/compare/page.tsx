@@ -146,7 +146,11 @@ export default async function ComparePage({ searchParams }: Props) {
             <tr>
               <td className="p-4 border-b font-medium sticky left-0 bg-gray-50">説明</td>
               {products.map((p) => (
-                <td key={p.id}>{p.description}</td>
+                <td key={p.id} className="p-4 border-b text-sm">
+                  {p.description && p.description.length > 50
+                    ? `${p.description.slice(0, 50)}...`
+                    : p.description}
+                </td>
               ))}
             </tr>
 
