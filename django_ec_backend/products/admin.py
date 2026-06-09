@@ -66,7 +66,7 @@ class ProductImageInline(admin.TabularInline):
 # decorator を使っている場合はそこを修正します。
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'category', 'brand', 'price', 'specifications')
+    list_display = ('id', 'name', 'category', 'brand', 'price', 'stok')
     list_filter = ('category', 'brand')
     inlines = [ProductImageInline]
     search_fields = ('name',)
