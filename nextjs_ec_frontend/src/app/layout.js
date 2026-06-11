@@ -4,6 +4,7 @@ import CategorySidebar from '@/components/CategorySidebar'; // 追加
 import { AuthProvider } from '@/context/AuthContext'; // AuthProviderをインポート
 import { CartProvider } from '@/context/CartContext'; // CartProviderをインポート
 import DisclaimerBanner from '@/components/DisclaimerBanner';
+import { Analytics } from '@vercel/analytics/react';
 
 export const metadata = {
   title: 'My EC Store',
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
             </div>
           </CartProvider>
         </AuthProvider>
+        <Analytics /> {/* vercel.comのAnalyticsタグ */}
       </body>
     </html>
   );
