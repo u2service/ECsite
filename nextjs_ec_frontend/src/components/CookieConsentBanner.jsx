@@ -42,7 +42,7 @@ export default function CookieConsentBanner() {
           </span>
           <br />
           詳細については、当社の
-          <Link href="/privacy-policy" className="underline hover:text-blue-400 mx-1">Cookieポリシー</Link>
+          <Link href="/cookie-policy" className="underline hover:text-blue-400 mx-1">Cookieポリシー</Link>
           および
           <Link href="/privacy-policy" className="underline hover:text-blue-400 mx-1">プライバシーポリシー</Link>
           をご覧ください。

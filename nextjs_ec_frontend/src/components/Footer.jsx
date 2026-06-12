@@ -14,7 +14,10 @@ export default function Footer() {
         <p className="text-gray-600 text-sm mb-4">
           &copy; {new Date().getFullYear()} My EC Store. All rights reserved.
         </p>
-        <div className="flex justify-center gap-6">
+        <div className="flex justify-center flex-wrap gap-4 md:gap-6">
+          <Link href="/privacy-policy" className="text-xs text-gray-400 hover:text-gray-600 underline">プライバシーポリシー</Link>
+          <Link href="/cookie-policy" className="text-xs text-gray-400 hover:text-gray-600 underline">Cookieポリシー</Link>
+
           <button
             onClick={handleResetConsent}
             className="text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
