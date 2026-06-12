@@ -5,6 +5,7 @@ import { AuthProvider } from '@/context/AuthContext'; // AuthProviderをイン�
 import { CartProvider } from '@/context/CartContext'; // CartProviderをインポート
 import DisclaimerBanner from '@/components/DisclaimerBanner';
 import { Analytics } from '@vercel/analytics/react';
+import AnalyticsWrapper from '@/components/AnalyticsWrapper';
 import CookieConsentBanner from '@/components/CookieConsentBanner';
 
 export const metadata = {
@@ -33,8 +34,9 @@ export default function RootLayout({ children }) {
             </div>
           </CartProvider>
         </AuthProvider>
+        {/* 直接 Analytics を置くのではなく、Wrapperで制御する */}
+        <AnalyticsWrapper />
         <CookieConsentBanner />
-        <Analytics /> {/* vercel.comのAnalyticsタグ */}
       </body>
     </html>
   );
