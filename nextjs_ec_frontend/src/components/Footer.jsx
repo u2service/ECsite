@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 export default function Footer() {
   const handleResetConsent = () => {
     if (confirm('Cookieの設定をリセットして、再度選択し直しますか？')) {
