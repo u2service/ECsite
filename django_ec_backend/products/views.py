@@ -146,6 +146,14 @@ class CreateCheckoutSessionView(APIView):
         except Cart.DoesNotExist:
             return Response({'error': 'カートが見つかりません'}, status=status.HTTP_404_NOT_FOUND)
         
+        # ▼ 追加：決済セッションを作る前に在庫をチェックする
+        for item in cart.items.all():
+            if item.product.stock < item.quantity:
+                return Response(
+                    {'error': f'申し訳ありません。{item.product.name} の在庫が不足しています（残り{item.product.stock}個）。'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         # 2. 注文を仮作成 (status='pending')
         # カートの合計金額を計算
         total_amount = sum(item.product.price * item.quantity for item in cart.items.all())
@@ -355,22 +363,25 @@ class StripeWebhookView(APIView):
         try:
             with transaction.atomic():
                 for item in order.items.all():
-                    product = item.product
-                    if product:
-                        if product.stock < item.quantity:
-                            # 本来は決済前にチェックすべきだが、確定時にも安全策として確認
-                            # raise ValueError(f"{product.name} の在庫が不足しています。")
-                            # ログ出力などを行う（エラーを投げるとWebhook自体が失敗扱いになるので注意）
-                            print(f"Warning: {product.name} の在庫不足")
-                            product.stock = 0
-                        else:
-                            product.stock -= item.quantity
-                        product.save()
+                    # select_for_update() を使うことで、この商品の在庫を計算している間、
+                    # 他の処理がこの商品に触れないように「ロック」をかけます。
+                    product = Product.objects.select_for_update().get(id=item.product.id)
 
-                    # その後の注文完了メール送信など（既存処理）
-                    order.status = 'paid' # is_paid = True ではなく status = 'paid'
-                    order.save()
-                    print(f"注文 {order.id} の在庫を更新し、ステータスを 'paid' に変更しました。")
+                    if product.stock < item.quantity:
+                        # 決済前にチェックしていても、決済中に誰かが買って在庫がなくなる可能性はゼロではありません。
+                        # その場合はステータスを「paid」ではなく「error」などにして、管理者に通知するようにします。
+                        order.status = 'error_stock_shortage' # 在庫不足エラー用ステータス（仮）
+                        order.save()
+                        print(f"CRITICAL: 支払い済みですが在庫が足りません。注文ID: {order.id}")
+                        # 管理者に即時メールを送るなどの処理を推奨
+                        return
+                    
+                    product.stock -= item.quantity
+                    product.save()
+
+                # その後の注文完了メール送信など（既存処理）
+                order.status = 'paid' # is_paid = True ではなく status = 'paid'
+                order.save()
         except Exception as e:
             print(f"fulfill_order 内でエラーが発生しました: {e}")
             raise e # handle_checkout_session_completed の try-except でキャッチされる
