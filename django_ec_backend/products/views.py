@@ -23,8 +23,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 
 from .utils import send_order_confirmation_email, format_stripe_phone # 追記
-from django.core.mail import mail_admins
-
+from django.core.mail import mail_admins, send_mail
+from django.contrib.auth import get_user_model
 from django.db.models import Q # 検索のためにインポートを追加
 
 from django.db import transaction
@@ -307,9 +307,21 @@ class StripeWebhookView(APIView):
                 詳細は管理画面でご確認ください。
                 """
                 try:
-                    mail_admins(subject, message)
+                    #  スタッフ権限を持つユーザーのメールアドレスをすべて取得
+                    User = get_user_model()
+                    
+                    staff_emails = list(User.objects.filter(is_staff=True, is_active=True).values_list('email', flat=True))
+                    #  メールアドレスが設定されているユーザーのみに絞り込み
+                    recipient_list = [email for email in staff_emails if email]
+
+                    if recipient_list:
+                        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com')
+                        send_mail(subject, message, from_email, recipient_list)
+                    else:
+                        print("通知対象のスタッフユーザー（メールアドレスあり）が見つかりませんでした。")
+
                 except Exception as e:
-                    print(f"Error sending admin notification: {e}")
+                    print(f"Error sending staff notification: {e}")
                 # --- △ ここまで追加 △ ---
 
                 # ユーザーのカートを空にする
