@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from mptt.models import MPTTModel, TreeForeignKey
+from django.utils import timezone
 
 # --- ▼ Categoryモデルを追加 ▼ ---
 class Category(MPTTModel):
@@ -52,6 +53,7 @@ class Product(models.Model):
     stock = models.PositiveIntegerField(default=0, verbose_name="在庫数") # 追加
     # ここに動的なスペックを保存する
     specifications = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, verbose_name="作成日")
 
     def __str__(self):
         return self.name if self.name else "Unnamed Product"

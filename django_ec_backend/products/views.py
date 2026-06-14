@@ -46,7 +46,9 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = Product.objects.all()
         category_id = self.request.query_params.get('category_id')
         search_query = self.request.query_params.get('q') # 検索ワードを取得
-        
+        ordering = self.request.query_params.get('ordering')
+        limit = self.request.query_params.get('limit')
+
         if category_id:
             try:
                 # 指定されたカテゴリとその子孫（子カテゴリ、孫カテゴリ...）をすべて取得
@@ -64,6 +66,12 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
                 Q(description__icontains=search_query)
             )
         
+        if ordering:
+            queryset = queryset.order_by(ordering)
+
+        if limit:
+            queryset = queryset[:int(limit)]
+            
         return queryset
 
 # --- ▼ カート操作のためのViewSetを追加 ▼ ---
