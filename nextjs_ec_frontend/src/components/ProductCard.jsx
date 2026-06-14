@@ -9,7 +9,7 @@ export default function ProductCard({ product, isChecked, onCheckChange }) {
   const imageUrl = getFullImageUrl(product.image);
 
   return (
-    <div className="relative w-[200px] border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-white">
+    <div className="relative w-[200px] max-w-full border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-white">
       {/* ▼ チェックボックス：Linkの外側に配置して絶対座標で浮かす ▼ */}
       <div className="absolute top-2 left-2 z-10">
         <input

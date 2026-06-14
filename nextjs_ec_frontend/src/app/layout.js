@@ -23,7 +23,7 @@ export default function RootLayout({ children }) {
               {/* ここにバナーを追加 */}
               <DisclaimerBanner />
               <Header /> {/* ここにHeaderを配置 */}
-              <div className="container mx-auto p-4 flex flex-col md:flex-row gap-6">
+              <div className="p-4 py-6 overflow-hidden flex flex-col overflow-x-hidden md:flex-row gap-6">
                 {/* サイドバーを配置 */}
                 <div className="w-full md:w-64 flex-shrink-0">
                   <CategorySidebar />

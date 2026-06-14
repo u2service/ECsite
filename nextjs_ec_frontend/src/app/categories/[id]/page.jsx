@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import CategoryClientWrapper from '@/components/CategoryClientWrapper';
+import NewArrivals from '@/components/NewArrivals';
 
 // ヘルパー関数はサーバー側でもそのまま使えます
 const findCategoryAndPath = (nodes, targetId, currentPath = []) => {
@@ -22,7 +23,14 @@ export default async function CategoryProductsPage({ params }) {
   const productRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/?category_id=${categoryId}`, { next: { revalidate: 60 } });
   const products = productRes.ok ? await productRes.json() : [];
 
-  // 2. パンくずとカテゴリ名の設定
+    // 2. このカテゴリの新着商品（最新10件）を取得
+  const newArrivalRes = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/products/?category_id=${categoryId}&ordering=-created_at&limit=10`,
+    { next: { revalidate: 60 } }
+  );
+  const newArrivals = newArrivalRes.ok ? await newArrivalRes.json() : [];
+
+  // 3. パンくずとカテゴリ名の設定
   let categoryName = '';
   let categoryPath = [];
 
@@ -44,7 +52,7 @@ export default async function CategoryProductsPage({ params }) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="px-4 py-6 overflow-hidden">
       {/* パンくず（サーバーで生成されるのでSEOに強い） */}
       <nav className="flex text-sm text-gray-500 mb-6">
         <ol className="flex items-center space-x-2">
@@ -64,6 +72,14 @@ export default async function CategoryProductsPage({ params }) {
         {categoryName ? `${categoryName} 一覧` : 'カテゴリ別商品'}
       </h1>
 
+      {/* ★ ここに新着商品セクションを追加 */}
+      <NewArrivals products={newArrivals} />
+
+      <hr className="my-10 border-gray-200" />
+
+      {/* 通常の商品リスト */}
+      <h2 className="text-2xl font-bold mb-6">すべての商品</h2>
+      
       {/* インタラクティブな部分はクライアントコンポーネントへ渡す */}
       <CategoryClientWrapper products={products} categoryName={categoryName} />
     </div>

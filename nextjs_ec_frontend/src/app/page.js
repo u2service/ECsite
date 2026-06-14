@@ -1,13 +1,14 @@
-import ProductCard from '@/components/ProductCard'; // ProductCardをインポート
-import ProductListClient from '@/components/ProductListClient'; // あとで作ります
+import ProductCard from '@/components/ProductCard';
+import ProductListClient from '@/components/ProductListClient';
+import NewArrivals from '@/components/NewArrivals';
 
-// 商品データを取得するための非同期関数
-// 引数に q (検索ワード) を追加
-async function getProducts(q = '') {
-  let url = `${process.env.NEXT_PUBLIC_API_URL}/api/products/`;
-  if (q) {
-    url += `?q=${encodeURIComponent(q)}`;
-  }
+// 商品取得関数（汎用的に使えるようにパラメータを追加）
+async function getProducts(params = {}) {
+  const { q = '', ordering = '', limit = '' } = params;
+  let url = `${process.env.NEXT_PUBLIC_API_URL}/api/products/?`;
+  if (q) url += `q=${encodeURIComponent(q)}&`;
+  if (ordering) url += `ordering=${ordering}&`;
+  if (limit) url += `limit=${limit}&`;
 
   // 💡 安全対策：環境変数が万が一設定されていない場合のフォールバック（二重の安全策）
   if (!process.env.NEXT_PUBLIC_API_URL) {
@@ -38,11 +39,17 @@ export default async function Home({ searchParams }) {
   const resolvedParams = await searchParams;
   const query = resolvedParams.q || '';
 
-  // ページがレンダリングされる前にサーバーサイドでデータを取得
-  const products = await getProducts(query);
+  // 1. 通常の商品一覧を取得
+  const products = await getProducts({ q: query });
+
+  // 2. 新着商品（最新10件）を取得
+  const newArrivals = await getProducts({ ordering: '-created_at', limit: 10 });
 
   return (
-    <div>
+    <div className="container mx-auto overflow-x-auto px-4 py-6">
+      {/* 検索中でない場合のみ、または常に新着を表示 */}
+      {!query && <NewArrivals products={newArrivals} />}
+      
       <h1 className="text-3xl font-bold mb-6">
         {query ? `「${query}」の検索結果` : '商品一覧'}
       </h1>
