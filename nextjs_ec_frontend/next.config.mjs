@@ -36,6 +36,11 @@ const nextConfig = {
           source: "/admin/:path*",
           destination: "http://127.0.0.1:8000/admin/:path*",
         },
+                // 追加：メディアファイルの転送設定
+        {
+          source: "/media/:path*",
+          destination: "http://127.0.0.1:8000/media/:path*",
+        },
       ];
     }
     
