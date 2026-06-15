@@ -486,11 +486,17 @@ class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
 
-    # 取得は誰でも可能、投稿・投票はログインユーザーのみ
+    # ▼ 追加：認証クラスを明示的に指定
+    authentication_classes = [CookieJWTAuthentication]
+
+    # デフォルトの権限を「ログイン済みのみ」に一度設定し、取得だけを「誰でもOK」にする
+    permission_classes = [permissions.IsAuthenticated]
+
     def get_permissions(self):
+        # 一覧取得(list)と詳細取得(retrieve)だけは未ログインでも許可
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+        return super().get_permissions()
 
     def get_queryset(self):
         # クエリパラメータ ?product_id=... でフィルタリング可能にする

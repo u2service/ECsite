@@ -38,9 +38,18 @@ export default function ProductCard({ product, isChecked, onCheckChange }) {
           {/* ▲ 画像表示エリア ▲ */}
           <div className="p-4">
             <h2 className="text-lg font-semibold truncate">{product.id}</h2>
-            <h2 className="text-lg font-semibold truncate">{product.brand?.name || product.brand}</h2>
-            <h2 className="text-lg font-semibold truncate">{product.name}</h2>
-            <p className="text-gray-800 font-bold mt-2">¥{Number(product.price).toLocaleString()}</p>
+            <h2 className="text-xs text-gray-500 truncate">{product.brand?.name || product.brand}</h2>
+            <h2 className="text-sm font-semibold truncate h-10 line-clamp-2">{product.name}</h2>
+            {/* 価格とコメント数を並べて表示 */}
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-gray-800 font-bold">¥{Number(product.price).toLocaleString()}</p>
+              {/* ▼ コメント数を追加 ▼ */}
+              <div className="flex items-center text-gray-500 text-xs" title="コメント数">
+                <span className="mr-1">💬</span>
+                <span>{product.comment_count || 0}</span>
+              </div>
+              {/* ▲ コメント数を追加 ▲ */}
+            </div>
           </div>
         </div>
       </Link>

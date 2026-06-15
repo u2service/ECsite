@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ProductClientWrapper from '@/components/ProductClientWrapper'; // 後で作る
+import CommentSection from '@/components/CommentSection';
 
 async function getProduct(id) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}/`, {
@@ -87,6 +88,10 @@ export default async function ProductPage({ params }) {
           </table>
         </div>
       </div>
+
+      {/* --- ▼ コメントセクションを追加 ▼ --- */}
+      <CommentSection productId={product.id} />
+      {/* --- ▲ コメントセクションを追加 ▲ --- */}
       
       <div className="mt-12">
         <Link href="/" className="text-blue-600 hover:underline flex items-center">
