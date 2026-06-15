@@ -46,7 +46,7 @@ export default async function Home({ searchParams }) {
   const newArrivals = await getProducts({ ordering: '-created_at', limit: 10 });
 
   return (
-    <div className="container mx-auto overflow-x-auto px-4 py-6">
+    <div className="w-full px-4 py-6">
       {/* 検索中でない場合のみ、または常に新着を表示 */}
       {!query && <NewArrivals products={newArrivals} />}
       

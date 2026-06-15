@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
                   <CategorySidebar />
                 </div>
                 {/* メインコンテンツ */}
-              <main className="flex-grow">
+              <main className="flex-grow min-w-0">
                 {children}
               </main>
             </div>

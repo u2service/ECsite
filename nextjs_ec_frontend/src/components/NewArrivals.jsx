@@ -15,7 +15,7 @@ export default function NewArrivals({ products }) {
   }
 
   return (
-    <div className="mb-12 w-full max-w-full overflow-hidden">
+    <div className="mb-12 w-full max-w-full overflow-hidden min-w-0">
       <h2 className="text-2xl font-bold mb-6">新着商品</h2>
       {/* 横スクロールコンテナ */}
       <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory w-full scrollbar-thin
