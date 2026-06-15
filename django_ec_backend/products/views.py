@@ -5,13 +5,13 @@ from rest_framework.decorators import action
 
 from .models import (
     Product, Cart, CartItem, Order, OrderItem, Category,
-    CategorySpecField
+    CategorySpecField, Comment, CommentVote
 )
 
 from .serializers import (
     ProductSerializer, CartSerializer, CartItemSerializer,
     OrderSerializer, CategoryTreeSerializer,
-    CategorySpecFieldSerializer
+    CategorySpecFieldSerializer, CommentSerializer, CommentVoteSerializer
 )
 
 import os
@@ -25,7 +25,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from .utils import send_order_confirmation_email, format_stripe_phone # 追記
 from django.core.mail import mail_admins, send_mail
 from django.contrib.auth import get_user_model
-from django.db.models import Q # 検索のためにインポートを追加
+from django.db.models import Q, Count
 
 from django.db import transaction
 
@@ -43,7 +43,8 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
     
     def get_queryset(self):
-        queryset = Product.objects.all()
+        # コメント数を事前に集計して、1件ずつクエリが走るのを防ぐ（N+1問題対策）
+        queryset = Product.objects.annotate(comment_count_annotated=Count('comments'))
         category_id = self.request.query_params.get('category_id')
         search_query = self.request.query_params.get('q') # 検索ワードを取得
         ordering = self.request.query_params.get('ordering')
@@ -478,3 +479,50 @@ class CategorySpecView(APIView):
         except Category.DoesNotExist:
             return Response([], status=status.HTTP_404_NOT_FOUND)
 
+class CommentViewSet(viewsets.ModelViewSet):
+    """
+    コメントの取得・投稿・投票を管理するビュー
+    """
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+
+    # 取得は誰でも可能、投稿・投票はログインユーザーのみ
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        # クエリパラメータ ?product_id=... でフィルタリング可能にする
+        queryset = Comment.objects.all()
+        product_id = self.request.query_params.get('product_id')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+        return queryset
+
+    def perform_create(self, serializer):
+        # 投稿時に自動的にログインユーザーを保存
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='vote')
+    def vote(self, request, pk=None):
+        """
+        コメントに対して投票（Good/NG）を行うアクション
+        POST /api/comments/{id}/vote/ {"vote_type": "good"}
+        """
+        comment = self.get_object()
+        vote_type = request.data.get('vote_type')
+
+        if vote_type not in ['good', 'ng']:
+            return Response({'error': 'Invalid vote type'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 既存の投票があれば更新、なければ作成
+        vote, created = CommentVote.objects.update_or_create(
+            comment=comment,
+            user=request.user,
+            defaults={'vote_type': vote_type}
+        )
+
+        # 投票後の最新コメント情報を返す（フロントエンドで数値を即座に更新するため）
+        serializer = self.get_serializer(comment)
+        return Response(serializer.data, status=status.HTTP_200_OK)

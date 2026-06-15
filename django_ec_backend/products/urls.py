@@ -10,6 +10,7 @@ from .views import (
     CategoryTreeView,
     ProductComparisonView,
     CategorySpecView,
+    CommentViewSet,
 )
 
 router = DefaultRouter()
@@ -19,7 +20,7 @@ router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'cart-items', CartItemViewSet, basename='cart-items')
 router.register(r'orders', OrderViewSet, basename='orders') # 注文履歴用URLを追加
 router.register(r'category-tree', CategoryTreeView, basename='category-tree')
-
+router.register(r'comments', CommentViewSet, basename='comments')
 
 urlpatterns = [
     path('products/compare/', ProductComparisonView.as_view(), name='product-compare'),

@@ -98,15 +98,20 @@ class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     # カテゴリの親階層をリストで取得（パンくずリスト用）
     category_path = serializers.SerializerMethodField()
+    comment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = (
             'id', 'category', 'category_id', 'name', 'brand', 'description',
             'price', 'image', 'images', 'category_path', 'stock',
-            'specifications'
+            'specifications', 'comment_count'
             )
 
+    def get_comment_count(self, obj):
+        # アノテーションされている値があればそれを使う
+        return getattr(obj, 'comment_count_annotated', obj.comments.count())
+    
     def get_category_path(self, obj):
         if not obj.category:
             return []
@@ -146,3 +151,46 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
         children = obj.get_children()
         return CategoryTreeSerializer(children, many=True).data
     
+# --- ▼ コメント機能用のシリアライザーを追加 ▼ ---
+
+class CommentSerializer(serializers.ModelSerializer):
+    """
+    コメント表示・投稿用のシリアライザー
+    """
+    user_name = serializers.ReadOnlyField(source='user.username') # 記入者名
+    good_count = serializers.SerializerMethodField() # Good数
+    ng_count = serializers.SerializerMethodField()   # NG数
+    # ログイン中のユーザーがこのコメントに投票済みかどうか（UI制御用）
+    current_user_vote = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = (
+            'id', 'product', 'user', 'user_name', 'content',
+            'created_at', 'good_count', 'ng_count', 'current_user_vote'
+        )
+        read_only_fields = ('user',) # ユーザーはビュー側で保存時に設定
+
+    def get_good_count(self, obj):
+        return obj.votes.filter(vote_type='good').count()
+
+    def get_ng_count(self, obj):
+        return obj.votes.filter(vote_type='ng').count()
+
+    def get_current_user_vote(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            vote = obj.votes.filter(user=request.user).first()
+            return vote.vote_type if vote else None
+        return None
+
+class CommentVoteSerializer(serializers.ModelSerializer):
+    """
+    投票投稿用のシリアライザー
+    """
+    class Meta:
+        model = CommentVote
+        fields = ('id', 'comment', 'vote_type')
+        read_only_fields = ('user',)
+
+# --- ▲ コメント機能用のシリアライザーを追加 ▲ ---
