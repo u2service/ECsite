@@ -166,4 +166,71 @@ class CategorySpecField(models.Model):
     def __str__(self):
         return f"{self.category.name} - {self.display_name}"
 
+# --- ▼ コメント機能のモデルを追加 ▼ ---
 
+class Comment(models.Model):
+    """
+    商品に対するコメントモデル
+    """
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name="対象商品"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name="投稿者"
+    )
+    content = models.TextField(verbose_name="コメント内容")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="投稿日時")
+
+    class Meta:
+        verbose_name = "コメント"
+        verbose_name_plural = "コメント一覧"
+        ordering = ['-created_at'] # 新しい順に並べる
+
+    def __str__(self):
+        # 投稿者名と商品名を表示
+        username = self.user.username if self.user else "Unknown"
+        product_name = self.product.name if self.product else "Unknown Product"
+        return f"{username} - {product_name}"
+
+
+class CommentVote(models.Model):
+    """
+    コメントに対するGood/NG投票モデル
+    """
+    VOTE_CHOICES = [
+        ('good', 'Good'),
+        ('ng', 'NG'),
+    ]
+    comment = models.ForeignKey(
+        Comment,
+        on_delete=models.CASCADE,
+        related_name='votes',
+        verbose_name="対象コメント"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name="投票者"
+    )
+    vote_type = models.CharField(
+        max_length=4,
+        choices=VOTE_CHOICES,
+        verbose_name="投票種別"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # 同じ人が同じコメントに複数回投票できないように制限
+        unique_together = ('comment', 'user')
+        verbose_name = "コメント投票"
+        verbose_name_plural = "コメント投票一覧"
+
+    def __str__(self):
+        return f"{self.user.username} voted {self.vote_type} on comment {self.comment.id}"
+
+# --- ▲ コメント機能のモデルを追加 ▲ ---
