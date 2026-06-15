@@ -1,7 +1,11 @@
 import json
 from django.contrib import admin
 from mptt.admin import DraggableMPTTAdmin
-from .models import Product, Category, Brand, Cart, CartItem, Order, OrderItem, ProductImage, CategorySpecField
+from .models import (
+    Product, Category, Brand, Cart, CartItem,
+    Order, OrderItem, ProductImage, CategorySpecField,
+    Comment, CommentVote
+    )
 
 # admin.site.register(Product)
 
@@ -111,4 +115,18 @@ class CategoryAdmin(DraggableMPTTAdmin):
     list_display_links = ('indented_title',)
     inlines = [CategorySpecFieldInline]
 
+# --- ▼ コメント機能の登録を追加 ▼ ---
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'product', 'created_at') # 一覧に表示する項目
+    list_filter = ('product', 'user', 'created_at')       # フィルター機能
+    search_fields = ('content', 'user__username', 'product__name') # 検索機能
+
+@admin.register(CommentVote)
+class CommentVoteAdmin(admin.ModelAdmin):
+    list_display = ('id', 'comment', 'user', 'vote_type', 'created_at')
+    list_filter = ('vote_type', 'created_at')
+
+# --- ▲ コメント機能の登録を追加 ▲ ---
 
