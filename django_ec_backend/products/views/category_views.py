@@ -47,10 +47,15 @@ class CategorySpecValuesView(APIView):
                 key = field.field_name
                 # JSONField内の特定のキーに対して、実際に存在する値をすべて取得
                 # DjangoのJSONFieldフィルタリング (specifications__cpu 等) を利用
-                values = products.values_list(f'specifications__{key}', flat=True).distinct()
+                values = []
+                for p in products:
+                    # JSONの中からキーを探して値を取得
+                    val = p.specifications.get(key)
+                    if val is not None and val != "":
+                        values.append(str(val))
 
                 # Noneや空文字を除去し、ソートしてリスト化
-                cleaned_values = sorted([str(v) for v in values if v is not None and v != ""])
+                cleaned_values = sorted(list(set(values)))
 
                 # 値が存在する場合のみ結果に含める
                 if cleaned_values:
