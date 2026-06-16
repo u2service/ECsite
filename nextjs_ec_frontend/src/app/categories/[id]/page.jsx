@@ -81,7 +81,11 @@ export default async function CategoryProductsPage({ params }) {
       <h2 className="text-2xl font-bold mb-6">すべての商品</h2>
       
       {/* インタラクティブな部分はクライアントコンポーネントへ渡す */}
-      <CategoryClientWrapper products={products} categoryName={categoryName} />
+      <CategoryClientWrapper
+        products={products}
+        categoryName={categoryName}
+        categoryId={targetId} // これを追加
+      />
     </div>
   );
 }

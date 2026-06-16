@@ -17,6 +17,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         ordering = self.request.query_params.get('ordering')
         limit = self.request.query_params.get('limit')
 
+        # 1. カテゴリによる絞り込み（既存）
         if category_id:
             try:
                 category = Category.objects.get(id=category_id)
@@ -25,17 +26,36 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             except Category.DoesNotExist:
                 queryset = Product.objects.none()
 
+        # 2. スペック情報（specifications JSONField）による動的な絞り込み（追加）
+        # URLパラメータに 'spec_項目名=値' が含まれている場合に対応
+        for param, value in self.request.query_params.items():
+            if param.startswith('spec_') and value:
+                # 'spec_cpu' から 'cpu' を取り出す
+                spec_key = param[len('spec_'):]
+                # カンマ区切りの値をリストに変換 (例: "8GB,16GB" -> ["8GB", "16GB"])
+                values = value.split(',')
+
+                # JSONFieldでリスト内のいずれかに一致するものを検索 (__in を使用)
+                filter_kwargs = {f'specifications__{spec_key}__in': values}
+                queryset = queryset.filter(**filter_kwargs)
+
+        # 3. 検索キーワードによる絞り込み（既存）
         if search_query:
             queryset = queryset.filter(
                 Q(name__icontains=search_query) |
                 Q(description__icontains=search_query)
             )
 
+        # 4. 並べ替え（既存）
         if ordering:
             queryset = queryset.order_by(ordering)
 
+        # 5. 件数制限（既存）
         if limit:
-            queryset = queryset[:int(limit)]
+            try:
+                queryset = queryset[:int(limit)]
+            except ValueError:
+                pass
 
         return queryset
 

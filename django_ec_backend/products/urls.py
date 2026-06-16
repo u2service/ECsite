@@ -10,6 +10,7 @@ from .views import (
     CategoryTreeView,
     ProductComparisonView,
     CategorySpecView,
+    CategorySpecValuesView,
     CommentViewSet,
 )
 
@@ -30,4 +31,6 @@ urlpatterns = [
     path('webhook/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'), # Webhook URLを追加
     # カテゴリごとのスペック定義を取得するエンドポイントを追加
     path('category-specs/<int:category_id>/', CategorySpecView.as_view(), name='category-specs'),
+    # カテゴリごとの実際に存在するスペック値を取得するエンドポイントを追加（これを確認用やフロントで使用）
+    path('category-spec-values/<int:category_id>/', CategorySpecValuesView.as_view(), name='category-spec-values'),
 ]

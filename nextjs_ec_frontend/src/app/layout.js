@@ -8,6 +8,7 @@ import { Analytics } from '@vercel/analytics/react';
 import AnalyticsWrapper from '@/components/AnalyticsWrapper';
 import CookieConsentBanner from '@/components/CookieConsentBanner';
 import Footer from '@/components/Footer';
+import { FilterProvider } from '@/context/FilterContext';
 
 export const metadata = {
   title: 'My EC Store',
@@ -20,6 +21,7 @@ export default function RootLayout({ children }) {
       <body className="flex flex-col min-h-screen"> {/* flex-col と min-h-screen を追加してフッターを下に固定しやすくする */}
         <AuthProvider>
           <CartProvider>
+            <FilterProvider>
               {/* ここにバナーを追加 */}
               <DisclaimerBanner />
               <Header /> {/* ここにHeaderを配置 */}
@@ -29,10 +31,11 @@ export default function RootLayout({ children }) {
                   <CategorySidebar />
                 </div>
                 {/* メインコンテンツ */}
-              <main className="flex-grow min-w-0">
-                {children}
-              </main>
-            </div>
+                <main className="flex-grow min-w-0">
+                  {children}
+                </main>
+              </div>
+            </FilterProvider>
           </CartProvider>
         </AuthProvider>
         <Footer /> {/* ここにFooterを追加 */}
