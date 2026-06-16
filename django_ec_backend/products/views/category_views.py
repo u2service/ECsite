@@ -50,7 +50,7 @@ class CategorySpecValuesView(APIView):
                 values = products.values_list(f'specifications__{key}', flat=True).distinct()
 
                 # Noneや空文字を除去し、ソートしてリスト化
-                cleaned_values = sorted([v for v in values if v is not None and v != ""])
+                cleaned_values = sorted([str(v) for v in values if v is not None and v != ""])
 
                 # 値が存在する場合のみ結果に含める
                 if cleaned_values:
