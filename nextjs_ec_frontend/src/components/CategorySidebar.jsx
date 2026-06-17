@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { usePathname, useParams } from 'next/navigation';
 import { useFilter } from '@/context/FilterContext';
 import Link from 'next/link';
 
@@ -43,7 +43,12 @@ export default function CategorySidebar() {
   const [categories, setCategories] = useState([]);
   const [specOptions, setSpecOptions] = useState({});
   const params = useParams();
-  const categoryId = params?.id; // 安全に取得
+  const pathname = usePathname(); // 現在のパスを取得
+
+  // 現在カテゴリページ (/categories/...) にいるかどうかを判定
+  const isCategoryPage = pathname.startsWith('/categories/');
+  // カテゴリページの場合のみ params.id をカテゴリIDとして扱う
+  const categoryId = isCategoryPage ? params?.id : null;
   const { filters, updateFilter, clearFilters } = useFilter();
 
   // 1. カテゴリツリーの取得（初回のみ）
