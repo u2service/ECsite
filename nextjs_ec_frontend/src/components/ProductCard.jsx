@@ -4,21 +4,24 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getFullImageUrl } from '@/utils/image'; // 追加
 
-export default function ProductCard({ product, isChecked, onCheckChange }) {
+export default function ProductCard({ product, isChecked, onCheckChange, showCheckbox = true }) {
   // 独自のロジックを削除し、共通関数を使用
   const imageUrl = getFullImageUrl(product.image);
 
   return (
     <div className="relative w-[200px] max-w-full border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-white">
       {/* ▼ チェックボックス：Linkの外側に配置して絶対座標で浮かす ▼ */}
-      <div className="absolute top-2 left-2 z-10">
-        <input
-          type="checkbox"
-          className="w-5 h-5 cursor-pointer accent-blue-600"
-          checked={isChecked}
-          onChange={(e) => onCheckChange(product.id, e.target.checked)}
-        />
-      </div>
+      {/* showCheckbox が true の時だけ表示 */}
+      {showCheckbox && (
+        <div className="absolute top-2 left-2 z-10">
+          <input
+            type="checkbox"
+            className="w-5 h-5 cursor-pointer accent-blue-600"
+            checked={isChecked}
+            onChange={(e) => onCheckChange(product.id, e.target.checked)}
+          />
+        </div>
+      )}
 
       <Link href={`/products/${product.id}`}>
         <div className="cursor-pointer">

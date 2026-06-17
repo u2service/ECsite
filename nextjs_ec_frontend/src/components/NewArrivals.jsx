@@ -22,7 +22,8 @@ export default function NewArrivals({ products }) {
 scrollbar-thumb-gray-300 scrollbar-track-transparent">
         {products.map((product) => (
           <div key={product.id} className="flex-none snap-start">
-            <ProductCard product={product} />
+            {/* チェックボックスを非表示にする */}
+            <ProductCard product={product} showCheckbox={false} />
           </div>
         ))}
       </div>
