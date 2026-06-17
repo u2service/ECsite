@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from backend.authentication import CookieJWTAuthentication
-from ..models import Product, Cart, CartItem
+from ..models import Product, Cart, CartItem, Postage
 from ..serializers import CartSerializer, CartItemSerializer
 
 class CartViewSet(viewsets.ViewSet):
@@ -38,6 +38,42 @@ class CartViewSet(viewsets.ViewSet):
 
         serializer = CartSerializer(cart)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='calculate-shipping')
+    def calculate_shipping(self, request):
+        """
+        クエリパラメータ 'prefecture' に基づき、カート内の送料合計を計算する
+        例: /api/cart/calculate-shipping/?prefecture=東京都
+        """
+        prefecture = request.query_params.get('prefecture')
+
+        # 都道府県が指定されていない場合は0円を返す
+        if not prefecture:
+            return Response({'shipping_total': 0})
+
+        try:
+            cart = Cart.objects.get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response({'shipping_total': 0})
+
+        shipping_total = 0
+
+        # カート内の各商品をループ
+        for item in cart.items.all():
+            try:
+                # 商品のサイズと都道府県に一致する送料をマスターから取得
+                postage = Postage.objects.get(
+                    prefecture=prefecture,
+                    size=item.product.shipping_size
+                )
+                # 送料 × 数量 を合算
+                shipping_total += postage.cost * item.quantity
+            except Postage.DoesNotExist:
+                # 該当する送料設定がない場合は計算を飛ばす
+                # ※運用上、全ての都道府県を網羅していれば発生しません
+                continue
+
+        return Response({'shipping_total': int(shipping_total)})
 
 class CartItemViewSet(viewsets.ModelViewSet):
     queryset = CartItem.objects.all()

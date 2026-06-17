@@ -1,14 +1,22 @@
 import json
-from django.contrib import admin
+from django.contrib import admin, messages
 from mptt.admin import DraggableMPTTAdmin
 from .models import (
     Product, Category, Brand, Cart, CartItem,
     Order, OrderItem, ProductImage, CategorySpecField,
-    Comment, CommentVote
+    Comment, CommentVote, Postage
     )
+import csv
+import io
+from django.urls import path
+from django.shortcuts import render, redirect
+from django import forms
+
+class CSVImportForm(forms.Form):
+    csv_file = forms.FileField(label="CSVファイル")
+
 
 # admin.site.register(Product)
-
 # Brand（メーカー）を管理画面に表示
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
@@ -130,3 +138,64 @@ class CommentVoteAdmin(admin.ModelAdmin):
 
 # --- ▲ コメント機能の登録を追加 ▲ ---
 
+@admin.register(Postage)
+class PostageAdmin(admin.ModelAdmin):
+    list_display = ('prefecture', 'size', 'cost')
+    list_filter = ('size', 'prefecture')
+
+    # 管理画面のリストページにボタンを追加するための設定
+    change_list_template = "admin/postage_changelist.html"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('import-csv/', self.import_csv, name='postage_import_csv'),
+        ]
+        return custom_urls + urls
+
+    def import_csv(self, request):
+        if request.method == "POST":
+            form = CSVImportForm(request.POST, request.FILES)
+            if form.is_valid():
+                csv_file = request.FILES['csv_file']
+                # Shift-JISで読み込み
+                data_set = csv_file.read().decode('shift_jis')
+                io_string = io.StringIO(data_set)
+                next(io_string)  # ヘッダー行をスキップ
+
+                postages_to_create = []
+                for row in csv.reader(io_string, delimiter=','):
+                    if not row or len(row) < 6:
+                        continue
+
+                    # row[1] が「該当する都道府県」 (例: "神奈川,千葉,埼玉")
+                    # row[2]~[5] が 60, 80, 120, 140サイズ
+                    prefectures_raw = row[1].strip('"')
+                    # 「自県（東京）」などの表記を考慮
+                    prefectures = prefectures_raw.split(',')
+
+                    sizes = ['60', '80', '120', '140']
+                    for i, size in enumerate(sizes):
+                        cost = row[i + 2]
+                        for pref in prefectures:
+                            pref_name = pref.strip()
+                            # 「東京」を「東京都」に補完するなどの正規化が必要な場合はここで行う
+                            if pref_name == "東京": pref_name = "東京都"
+                            if not pref_name.endswith(('都', '道', '府', '県')):
+                                # CSVのデータ形式に合わせて調整が必要
+                                pass
+
+                            postages_to_create.append(
+                                Postage(prefecture=pref_name, size=size, cost=cost)
+                            )
+
+                # 既存データを削除して一括登録（または update_or_create）
+                Postage.objects.all().delete()
+                Postage.objects.bulk_create(postages_to_create)
+
+                self.message_user(request, "CSVのインポートが完了しました。")
+                return redirect("..")
+        else:
+            form = CSVImportForm()
+
+        return render(request, "admin/csv_form.html", {"form": form})

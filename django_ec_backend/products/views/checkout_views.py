@@ -11,7 +11,7 @@ from rest_framework import permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
-from ..models import Product, Cart, Order, OrderItem
+from ..models import Product, Cart, Order, OrderItem, Postage
 from ..utils import send_order_confirmation_email, format_stripe_phone
 
 class CreateCheckoutSessionView(APIView):
@@ -20,6 +20,11 @@ class CreateCheckoutSessionView(APIView):
     throttle_scope = 'burst'
 
     def post(self, request, *args, **kwargs):
+        # 1. フロントエンドから都道府県を取得
+        prefecture = request.data.get('prefecture')
+        if not prefecture:
+            return Response({'error': '都道府県を選択してください。'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             cart = Cart.objects.get(user=request.user)
             if not cart.items.exists():
@@ -27,6 +32,7 @@ class CreateCheckoutSessionView(APIView):
         except Cart.DoesNotExist:
             return Response({'error': 'カートが見つかりません'}, status=status.HTTP_404_NOT_FOUND)
 
+        # 在庫チェック
         for item in cart.items.all():
             if item.product.stock < item.quantity:
                 return Response(
@@ -34,10 +40,25 @@ class CreateCheckoutSessionView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        total_amount = sum(item.product.price * item.quantity for item in cart.items.all())
+        # 2. 送料の計算 (バックエンド側で再度計算して整合性を保つ)
+        shipping_total = 0
+        for item in cart.items.all():
+            try:
+                postage = Postage.objects.get(prefecture=prefecture, size=item.product.shipping_size)
+                shipping_total += postage.cost * item.quantity
+            except Postage.DoesNotExist:
+                # 送料設定が見つからない場合のフォールバック（またはエラー）
+                return Response({'error': f'{prefecture}への送料設定が見つかりません。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3. 商品合計と最終合計（商品合計 + 送料）の算出
+        items_total = sum(item.product.price * item.quantity for item in cart.items.all())
+        grand_total = items_total + shipping_total
+
+        # 4. Orderオブジェクトの作成（shipping_costを保存）
         order = Order.objects.create(
             user=request.user,
-            total_amount=total_amount,
+            total_amount=grand_total,    # 総支払額
+            shipping_cost=shipping_total, # 送料合計
             full_name='',
             email=request.user.email,
             shipping_address='',
@@ -51,6 +72,7 @@ class CreateCheckoutSessionView(APIView):
                 price=item.product.price
             )
 
+        # 5. Stripe用のline_items作成
         line_items = []
         for item in cart.items.all():
             line_items.append({
@@ -60,6 +82,17 @@ class CreateCheckoutSessionView(APIView):
                     'unit_amount': int(item.product.price),
                 },
                 'quantity': item.quantity,
+            })
+        
+        # 6. 送料をStripeの決済項目に追加
+        if shipping_total > 0:
+            line_items.append({
+                'price_data': {
+                    'currency': 'jpy',
+                    'product_data': {'name': '送料'},
+                    'unit_amount': int(shipping_total),
+                },
+                'quantity': 1,
             })
 
         frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')

@@ -54,6 +54,18 @@ class Product(models.Model):
     # ここに動的なスペックを保存する
     specifications = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(default=timezone.now, verbose_name="作成日")
+    SHIPPING_SIZE_CHOICES = [
+        ('60', '60サイズ'),
+        ('80', '80サイズ'),
+        ('120', '120サイズ'),
+        ('140', '140サイズ'),
+    ]
+    shipping_size = models.CharField(
+        max_length=10,
+        choices=SHIPPING_SIZE_CHOICES,
+        default='60',
+        verbose_name="配送サイズ"
+    )
 
     def __str__(self):
         return self.name if self.name else "Unnamed Product"
@@ -119,6 +131,8 @@ class Order(models.Model):
     stripe_checkout_session_id = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="送料合計")
+    # total_amount は「商品小計 + 送料合計」の総支払額として利用
 
     def __str__(self):
         # userはSET_NULLなので、Guestや削除済みユーザーの場合を考慮（既存通り）
@@ -234,3 +248,17 @@ class CommentVote(models.Model):
         return f"{self.user.username} voted {self.vote_type} on comment {self.comment.id}"
 
 # --- ▲ コメント機能のモデルを追加 ▲ ---
+
+class Postage(models.Model):
+    prefecture = models.CharField(max_length=20, verbose_name="都道府県")
+    size = models.CharField(max_length=10, verbose_name="サイズ")  # '60', '80', '120', '140'
+    cost = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="送料")
+
+    class Meta:
+        unique_together = ('prefecture', 'size')
+        verbose_name = "送料設定"
+        verbose_name_plural = "送料設定一覧"
+
+    def __str__(self):
+        return f"{self.prefecture} ({self.size}サイズ): {self.cost}円"
+    
