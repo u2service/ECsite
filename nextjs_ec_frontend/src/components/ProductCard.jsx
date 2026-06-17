@@ -13,13 +13,20 @@ export default function ProductCard({ product, isChecked, onCheckChange, showChe
       {/* ▼ チェックボックス：Linkの外側に配置して絶対座標で浮かす ▼ */}
       {/* showCheckbox が true の時だけ表示 */}
       {showCheckbox && (
-        <div className="absolute top-2 left-2 z-10">
+        <div className="absolute top-2 left-2 z-10 bg-white/80 backdrop-blur-sm rounded px-1 flex items-center shadow-sm border border-gray-200">
           <input
+            id={`compare-${product.id}`}
             type="checkbox"
-            className="w-5 h-5 cursor-pointer accent-blue-600"
+            className="w-4 h-4 cursor-pointer accent-blue-600"
             checked={isChecked}
             onChange={(e) => onCheckChange(product.id, e.target.checked)}
           />
+          <label
+            htmlFor={`compare-${product.id}`}
+            className="ml-1 text-[10px] font-bold text-blue-700 cursor-pointer select-none"
+          >
+            比較
+          </label>
         </div>
       )}
 
