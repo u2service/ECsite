@@ -137,15 +137,17 @@ class StripeWebhookView(APIView):
         return Response(status=status.HTTP_200_OK)
 
     def handle_checkout_session_completed(self, session):
-        session_id = session['id']
-        customer_email = session.get('customer_details', {}).get('email')
+        # session (StripeObject) を通常の辞書に変換します
+        session_dict = session.to_dict()
+        session_id = session_dict['id']
+        customer_email = session_dict.get('customer_details', {}).get('email')
 
         try:
             order = Order.objects.get(stripe_checkout_session_id=session_id)
             if order.status == 'pending':
                 self.fulfill_order(order)
-                if session.get('customer_details'):
-                    customer_info = session['customer_details']
+                if session_dict.get('customer_details'):
+                    customer_info = session_dict['customer_details']
                     order.full_name = customer_info['name']
                     order.shipping_address = self._format_address(customer_info)
                     order.postal_code = customer_info["address"]['postal_code']

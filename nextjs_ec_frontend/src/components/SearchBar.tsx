@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function SearchBar() {
@@ -13,7 +13,8 @@ export default function SearchBar() {
     setQuery(searchParams.get('q') || '');
   }, [searchParams]);
 
-  const handleSearch = (e) => {
+  // 引数 e に React.FormEvent 型を指定します
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (query.trim()) {
       router.push(`/?q=${encodeURIComponent(query.trim())}`);

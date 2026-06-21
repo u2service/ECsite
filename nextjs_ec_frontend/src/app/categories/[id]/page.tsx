@@ -1,9 +1,31 @@
 import Link from 'next/link';
 import CategoryClientWrapper from '@/components/CategoryClientWrapper';
 import NewArrivals from '@/components/NewArrivals';
+import { Product } from '@/types/product'; // Product 型をインポート
 
-// ヘルパー関数はサーバー側でもそのまま使えます
-const findCategoryAndPath = (nodes, targetId, currentPath = []) => {
+// カテゴリパスとツリーノードの型定義
+interface CategoryPath {
+  id: number;
+  name: string;
+}
+
+interface CategoryNode {
+  id: number;
+  name: string;
+  children?: CategoryNode[];
+}
+
+// category_pathプロパティを持つ可能性のあるProduct型
+interface CategoryProduct extends Product {
+  category_path?: CategoryPath[];
+}
+
+// ヘルパー関数の型定義
+const findCategoryAndPath = (
+  nodes: CategoryNode[],
+  targetId: number,
+  currentPath: CategoryPath[] = []
+): { name: string; path: CategoryPath[] } | null => {
   for (const node of nodes) {
     const path = [...currentPath, { id: node.id, name: node.name }];
     if (node.id === targetId) return { name: node.name, path: path };
@@ -15,15 +37,20 @@ const findCategoryAndPath = (nodes, targetId, currentPath = []) => {
   return null;
 };
 
-export default async function CategoryProductsPage({ params }) {
+// Next.jsのApp RouterのPageProps of page.tsx
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function CategoryProductsPage({ params }: PageProps) {
   const { id: categoryId } = await params;
   const targetId = parseInt(categoryId);
 
   // 1. 商品一覧をサーバー側で取得
   const productRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/?category_id=${categoryId}`, { next: { revalidate: 60 } });
-  const products = productRes.ok ? await productRes.json() : [];
+  const products: CategoryProduct[] = productRes.ok ? await productRes.json() : [];
 
-    // 2. このカテゴリの新着商品（最新10件）を取得
+  // 2. このカテゴリの新着商品（最新10件）を取得
   const newArrivalRes = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/products/?category_id=${categoryId}&ordering=-created_at&limit=10`,
     { next: { revalidate: 60 } }
@@ -32,7 +59,7 @@ export default async function CategoryProductsPage({ params }) {
 
   // 3. パンくずとカテゴリ名の設定
   let categoryName = '';
-  let categoryPath = [];
+  let categoryPath: CategoryPath[] = [];
 
   if (products.length > 0 && products[0].category_path) {
     const fullPath = products[0].category_path;
@@ -53,7 +80,7 @@ export default async function CategoryProductsPage({ params }) {
 
   return (
     <div className="px-4 py-6 overflow-hidden">
-      {/* パンくず（サーバーで生成されるのでSEOに強い） */}
+      {/* パンくず */}
       <nav className="flex text-sm text-gray-500 mb-6">
         <ol className="flex items-center space-x-2">
           <li><Link href="/" className="hover:text-blue-600">ホーム</Link></li>
@@ -72,7 +99,7 @@ export default async function CategoryProductsPage({ params }) {
         {categoryName ? `${categoryName} 一覧` : 'カテゴリ別商品'}
       </h1>
 
-      {/* ★ ここに新着商品セクションを追加 */}
+      {/* 新着商品セクション */}
       <NewArrivals products={newArrivals} />
 
       <hr className="my-10 border-gray-200" />
@@ -80,11 +107,10 @@ export default async function CategoryProductsPage({ params }) {
       {/* 通常の商品リスト */}
       <h2 className="text-2xl font-bold mb-6">すべての商品</h2>
       
-      {/* インタラクティブな部分はクライアントコンポーネントへ渡す */}
+      {/* インタラクティブな部分 (categoryName は不要なため削除しました) */}
       <CategoryClientWrapper
         products={products}
-        categoryName={categoryName}
-        categoryId={targetId} // これを追加
+        categoryId={targetId}
       />
     </div>
   );

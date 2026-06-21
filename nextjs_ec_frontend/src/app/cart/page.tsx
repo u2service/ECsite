@@ -4,12 +4,20 @@ import { useState, useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useAuth } from '@/context/AuthContext'; // AuthContextをインポート
-import { loadStripe } from '@stripe/stripe-js'; // stripe-jsをインポート
-import { getFullImageUrl } from '@/utils/image'; // 追加
+import { useAuth } from '@/context/AuthContext';
+import { loadStripe } from '@stripe/stripe-js';
+import { getFullImageUrl } from '@/utils/image';
+import { Product } from '@/types/product'; // Product 型をインポート
 
-// Stripeの初期化（コンポーネントの外で一度だけ実行）
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+// カートアイテムの型定義
+interface CartItem {
+  id: number;
+  product: Product;
+  quantity: number;
+}
+
+// Stripeの初期化（環境変数が空の場合は空文字を渡してエラーを防ぐ）
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 // 都道府県リスト
 const PREFECTURES = [
@@ -23,18 +31,22 @@ const PREFECTURES = [
 ];
 
 export default function CartPage() {
-  const { cart, loading, removeItemFromCart, updateItemQuantity } = useCart();
-  const { fetchOptions } = useAuth(); // fetchOptionsを取得
+  // Context から取得する値の型を明示（ContextがまだJSのため、一時的に any 型などで透過させます）
+  const { cart, loading, removeItemFromCart, updateItemQuantity } = useCart() as any;
+  const { fetchOptions } = useAuth() as any;
 
-  // 新しく追加するステート
   const [selectedPrefecture, setSelectedPrefecture] = useState("");
   const [shippingTotal, setShippingTotal] = useState(0);
   const [isCalculating, setIsCalculating] = useState(false);
 
   // 都道府県が変更されたら送料を計算
   useEffect(() => {
+    // 重複リクエストをキャンセルするためのコントローラー
+    const abortController = new AbortController();
+
     const fetchShipping = async () => {
-      if (!selectedPrefecture) {
+      // カート情報または都道府県が選択されていない場合は計算をスキップ
+      if (!selectedPrefecture || !cart) {
         setShippingTotal(0);
         return;
       }
@@ -42,23 +54,41 @@ export default function CartPage() {
       setIsCalculating(true);
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/cart/calculate-shipping/?prefecture=${selectedPrefecture}`,
-          fetchOptions('GET')
+          `${process.env.NEXT_PUBLIC_API_URL}/api/cart/calculate-shipping/?prefecture=${encodeURIComponent(selectedPrefecture)}`,
+          {
+            ...fetchOptions('GET'),
+            signal: abortController.signal // キャンセル用シグナルを渡す
+          }
         );
-        const data = await res.json();
         if (res.ok) {
+          const data = await res.json();
           setShippingTotal(data.shipping_total);
+          } else {
+          // 401などのエラー時は警告をコンソールに出す（画面は壊さない）
+          console.warn(`送料計算リクエストがステータス ${res.status} で返されました。`);
         }
-      } catch (error) {
-        console.error('送料計算エラー:', error);
+      } catch (error: any) {
+        // キャンセルによるエラー（AbortError）は無視し、それ以外のエラーのみ記録
+        if (error.name !== 'AbortError') {
+          console.error('送料計算エラー:', error);
+        }
       } finally {
-        setIsCalculating(false);
+        // キャンセルされていない場合のみ、ローディング状態を解除
+        if (!abortController.signal.aborted) {
+          setIsCalculating(false);
+        }
       }
     };
 
     fetchShipping();
-  }, [selectedPrefecture, cart, fetchOptions]);
-
+    // クリーンアップ関数: 次の実行が走るかアンマウントされたら、実行中のリクエストをキャンセルする
+    return () => {
+      abortController.abort();
+    };
+    
+    // 依存配列に JSON.stringify(cart?.items) を指定して、中身が変わった時だけ実行されるようにします
+  }, [selectedPrefecture, JSON.stringify(cart?.items), fetchOptions]);
+  
   const handleCheckout = async () => {
     if (!selectedPrefecture) {
       alert("配送先の都道府県を選択してください。");
@@ -66,7 +96,6 @@ export default function CartPage() {
     }
 
     try {
-            // 修正ポイント: fetchOptionsの第2引数にデータを渡す
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/create-checkout-session/`,
         fetchOptions('POST', { prefecture: selectedPrefecture })
@@ -74,17 +103,14 @@ export default function CartPage() {
       const session = await res.json();
 
       if (res.ok) {
-        // 2. バックエンドから取得したURLにリダイレクト
         if (session.url) {
           window.location.href = session.url;
         } else {
           console.error('Stripe Checkout URLがバックエンドから提供されていません。', session);
           alert('決済処理を開始できませんでした。');
         }
-       } else {
-        // バックエンドからのエラーレスポンスの構造をより詳細にログに記録
-        console.error('Checkout Sessionの作成に失敗:', session); // sessionオブジェクト全体をログに出力
-        // または、特定のプロパティをチェックして表示
+      } else {
+        console.error('Checkout Sessionの作成に失敗:', session);
         const errorMessage = session?.error || session?.detail || JSON.stringify(session);
         console.error('詳細:', errorMessage);
         alert(`決済処理を開始できませんでした。詳細: ${errorMessage}`);
@@ -118,31 +144,27 @@ export default function CartPage() {
       <h1 className="text-3xl font-bold mb-6">ショッピングカート</h1>
       <div className="bg-white shadow-md rounded-lg mb-6">
         {/* カートアイテムの一覧 */}
-        {cart.items.map((item) => {
-          // 独自のロジックを削除し、共通関数を使用
+        {cart.items.map((item: CartItem) => {
           const imageUrl = getFullImageUrl(item.product.image);
 
           return (
             <div key={item.id} className="flex items-center justify-between p-4 border-b">
               <div className="flex items-center">
-                {/* 画像表示エリア */}
                 <div className="w-24 h-24 relative mr-4">
                   <Image
                     src={imageUrl}
                     alt={item.product.name}
-                    fill // 親要素に合わせて表示
+                    fill
                     className="object-cover rounded"
-                    priority // ← これを追加！
+                    priority
                   />
                 </div>
-                {/* 商品名と価格 */}
                 <div>
                   <h2 className="font-semibold text-lg">{item.product.name}</h2>
                   <p className="text-gray-600">¥{Number(item.product.price).toLocaleString()}</p>
                 </div>
               </div>
 
-              {/* 数量変更と削除ボタン */}
               <div className="flex items-center">
                 <div className="flex items-center border rounded">
                   <button
@@ -164,8 +186,6 @@ export default function CartPage() {
         })}
       </div>
 
-
-      {/* 配送先選択と合計金額 */}
       <div className="bg-gray-50 p-6 rounded-lg shadow-inner">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="w-full md:w-1/2">
@@ -200,7 +220,6 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* アクションボタン */}
       <div className="text-right mt-6">
         <button 
           onClick={handleCheckout} 
