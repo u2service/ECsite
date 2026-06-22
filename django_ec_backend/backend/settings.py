@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'dj_rest_auth',
     'dj_rest_auth.registration',
+    'drf_spectacular',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -231,6 +232,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # --- ▼ 認証関連の設定を追加 ▼ ---
   
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'backend.authentication.CookieJWTAuthentication', # 作成したクラスを指定
     ),
@@ -247,7 +249,15 @@ REST_FRAMEWORK = {
     }
     # ▲ ここまで追記 ▲
 }
-  
+
+# ★仕様書のタイトルなどの基本情報を設定します（ファイルの一番下などでOK）
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'フルスタックECサイト API仕様書',
+    'DESCRIPTION': 'Next.jsと連携するための本格的なEC機能のAPIドキュメントです。',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
 # dj-rest-authでJWTを使用するための設定
 REST_AUTH = {
   'USE_JWT': True,
