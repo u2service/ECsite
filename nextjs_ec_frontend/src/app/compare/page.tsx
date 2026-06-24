@@ -1,14 +1,26 @@
-import { Product, SpecDefinition, BrandDefinition } from '../../types/product';
 import Image from 'next/image';
-import { getFullImageUrl } from '@/utils/image'; // 追加
+import { getFullImageUrl } from '@/utils/image';
 import Link from 'next/link';
 
+// 💡 自動生成されたスキーマから型をインポート
+import { paths } from '@/types/schema';
+
+// ① 比較用商品APIから「単一の商品」の型を抽出
+type DjangoCompareProduct = paths['/api/products/compare/']['get']['responses']['200']['content']['application/json'][number];
+
+// ② スキーマから never が返ってきてしまうため、明示的にスペック定義の型を記述します 💡
+interface DjangoSpecDefinition {
+  id?: number;
+  name: string;   // 例: "length", "width" など
+  label: string;  // 例: "長さ", "幅" などの画面表示名
+}
+
 // 1. 商品データを取得する関数
-async function fetchProducts(ids: string[]): Promise<Product[]> {
+async function fetchProducts(ids: string[]): Promise<DjangoCompareProduct[]> {
   const idQuery = ids.join(',');
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
   const url = `${API_BASE}/api/products/compare/?ids=${idQuery}`;
-  console.log("Djangoにリクエスト送信中:", url); // ターミナルに表示されます
+  console.log("Djangoにリクエスト送信中:", url);
 
   try {
     const res = await fetch(url, { cache: 'no-store' });
@@ -17,7 +29,7 @@ async function fetchProducts(ids: string[]): Promise<Product[]> {
       return [];
     }
     const data = await res.json();
-    console.log("取得したデータ:", data); // これが空でないか確認
+    console.log("取得したデータ:", data);
     return data;
   } catch (error) {
     console.error("通信自体に失敗しました（CORSやサーバー停止など）:", error);
@@ -26,9 +38,9 @@ async function fetchProducts(ids: string[]): Promise<Product[]> {
 }
 
 // 2. カテゴリ項目定義を取得する関数
-async function fetchSpecDefinitions(categoryId: number): Promise<SpecDefinition[]> {
-  // 商品取得と同じ環境変数を指定（なければローカルの 8000 を使う）
+async function fetchSpecDefinitions(categoryId: number): Promise<DjangoSpecDefinition[]> {
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  // 💡 パスパラメータに合わせてエンドポイントを整形
   const res = await fetch(`${API_BASE}/api/category-specs/${categoryId}/`, {
     cache: 'no-store',
   });
@@ -41,35 +53,29 @@ type Props = {
 };
 
 // 3. ページ本体
-// 比較ページの page.jsx のイメージ
 export default async function ComparePage({ searchParams }: Props) {
-  const { ids } = await searchParams;
   const params = await searchParams;
   const idsString = params.ids || ""; // "1,2,3" という文字列
-  const idArray = idsString.split(',').filter(id => id !== "");
   
   if (!idsString) {
     return <div className="p-10 text-red-500">比較する商品が選択されていません。</div>;
   }
 
-  const productIds = idsString.split(',');
+  const productIds = idsString.split(',').filter(id => id !== "");
   const products = await fetchProducts(productIds);
 
   if (products.length === 0) {
     return <div className="p-10">該当する商品が見つかりませんでした。</div>;
   }
 
-  const categoryId = products[0].category.id; // ここでエラーが出ていた箇所
-  console.log("リクエストするカテゴリID:", categoryId); // IDが正しいか確認
+  // 💡 DjangoCompareProduct の構造に基づいて安全にアクセス
+  const categoryId = products[0].category?.id ?? 0;
+  console.log("リクエストするカテゴリID:", categoryId);
 
   const specDefinitions = await fetchSpecDefinitions(categoryId);
 
-  const brandId = products[0].brand;
-  console.log("メーカー（ブランド）は", brandId)
-
-  console.log("取得したスペック定義:", specDefinitions); // ここが [] ならDBまたはAPIの問題
-  console.log("スペック定義の1つ目:", specDefinitions[0]?.name);
-  console.log("商品1のスペック全データ:", products[0]?.specifications);
+  const brandId = products[0].brand?.id;
+  console.log("メーカー（ブランド）IDは", brandId);
 
   return (
     <div className="p-8">
@@ -87,7 +93,9 @@ export default async function ComparePage({ searchParams }: Props) {
             <tr>
               <th className="p-4 border-b font-semibold w-40 sticky left-0 bg-gray-100">カテゴリ</th>
               {products.map((p) => (
-                <th key={p.id} className="p-4 border-b font-semibold min-w-[200px]">{p.category.name}</th>
+                <th key={p.id} className="p-4 border-b font-semibold min-w-[200px]">
+                  {p.category?.name || "未分類"}
+                </th>
               ))}
             </tr>
 
@@ -96,7 +104,6 @@ export default async function ComparePage({ searchParams }: Props) {
               <th className="p-4 border-b font-semibold w-40 sticky left-0 bg-gray-100">メーカー（ブランド）</th>
               {products.map((p) => (
                 <th key={p.id} className="p-4 border-b font-semibold min-w-[200px]">
-                  {/* p.brand がオブジェクトになったので .name を指定 */}
                   {p.brand?.name || "不明"}
                 </th>
               ))}
@@ -110,7 +117,7 @@ export default async function ComparePage({ searchParams }: Props) {
                     href={`/products/${p.id}`}
                     className="text-blue-600 hover:text-blue-800 hover:underline decoration-2 transition-all"
                   >
-                  {p.name}
+                    {p.name}
                   </Link>
                 </th>
               ))}
@@ -132,8 +139,8 @@ export default async function ComparePage({ searchParams }: Props) {
                 <td key={p.id} className="p-4 border-b">
                   <div className="relative w-20 h-20">
                     <Image
-                      src={getFullImageUrl(p.image)} // ここでエラーが消えるはず！
-                      alt={p.name}
+                      src={getFullImageUrl(p.image)}
+                      alt={p.name ?? "商品画像"}
                       fill
                       className="object-cover rounded"
                     />
@@ -149,37 +156,42 @@ export default async function ComparePage({ searchParams }: Props) {
                 <td key={p.id} className="p-4 border-b text-sm">
                   {p.description && p.description.length > 50
                     ? `${p.description.slice(0, 50)}...`
-                    : p.description}
+                    : p.description || ""}
                 </td>
               ))}
             </tr>
 
-            {/* スペック詳細のセクション見出し（ここが見出しになります） */}
+            {/* スペック詳細のセクション見出し */}
             <tr className="bg-gray-200">
               <td colSpan={products.length + 1} className="p-2 font-bold text-center border-b">
                 スペック詳細
               </td>
             </tr>
 
-            {/* 各スペック項目をループで回す（外側の tr は不要です） */}
-            {specDefinitions.map((spec) => (
-              <tr key={spec.name} className="hover:bg-gray-50">
-                <td className="p-4 border-b font-medium sticky left-0 bg-gray-50">{spec.label}</td>
+            {/* 各スペック項目をループで回す */}
+            {specDefinitions.map((spec) => {
+              const specName = spec.name ?? "";
+              return (
+                <tr key={specName} className="hover:bg-gray-50">
+                  <td className="p-4 border-b font-medium sticky left-0 bg-gray-50">{spec.label}</td>
 
-                {/* 各商品の値 */}
-                {products.map((p) => (
-                  <td key={p.id} className="p-4 border-b">
-                     {/*
-                        p.specifications[spec.name] が表示されない場合は、
-                        コンソールで spec.name と specifications のキーが一致しているか確認してください。
-                     */}
-                    {p.specifications && p.specifications[spec.name] !== undefined
-                      ? String(p.specifications[spec.name])
-                      : '-'}
-                  </td>
-                ))}
-              </tr>
-            ))}
+                  {/* 各商品の値 */}
+                  {products.map((p) => {
+                    // 💡 Django側の仕様に合わせたキーでの柔軟な型キャスト・安全アクセス
+                    const specifications = p.specifications as Record<string, any> | undefined;
+                    const val = specifications && specifications[specName] !== undefined
+                      ? specifications[specName]
+                      : '-';
+
+                    return (
+                      <td key={p.id} className="p-4 border-b">
+                        {String(val)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

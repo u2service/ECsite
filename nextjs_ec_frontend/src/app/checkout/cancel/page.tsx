@@ -1,4 +1,11 @@
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+// 💡 ブラウザのタブ名や検索エンジン用のメタデータを定義
+export const metadata: Metadata = {
+  title: '決済キャンセル',
+  robots: { index: false, follow: false }, // 決済画面系は検索エンジンにインデックスさせないのが一般的です
+};
 
 export default function CheckoutCancelPage() {
   return (

@@ -5,6 +5,7 @@ from .models import (
     Comment, CommentVote
     )
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema_field
 
 User = get_user_model()
 
@@ -45,6 +46,7 @@ class CartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = ('id', 'product', 'product_id', 'quantity', 'total_price')
 
+    @extend_schema_field(serializers.IntegerField())
     def get_total_price(self, obj):
         return obj.product.price * obj.quantity
 
@@ -57,6 +59,7 @@ class CartSerializer(serializers.ModelSerializer):
         model = Cart
         fields = ('id', 'user', 'items', 'grand_total', 'created_at')
 
+    @extend_schema_field(serializers.IntegerField())
     def get_grand_total(self, obj):
         # カート内の商品の合計金額を計算
         return sum(item.product.price * item.quantity for item in obj.items.all())
@@ -112,10 +115,12 @@ class ProductSerializer(serializers.ModelSerializer):
             'specifications', 'comment_count'
             )
 
+    @extend_schema_field(serializers.IntegerField())
     def get_comment_count(self, obj):
         # アノテーションされている値があればそれを使う
         return getattr(obj, 'comment_count_annotated', obj.comments.count())
     
+    @extend_schema_field(serializers.CharField())
     def get_category_path(self, obj):
         if not obj.category:
             return []
@@ -150,6 +155,7 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
         model = Category
         fields = ('id', 'name', 'children')
 
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_children(self, obj):
         # 子カテゴリが存在する場合、自分自身（シリアライザー）を再度呼び出す
         children = obj.get_children()
@@ -175,12 +181,15 @@ class CommentSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('user',) # ユーザーはビュー側で保存時に設定
 
+    @extend_schema_field(serializers.IntegerField())
     def get_good_count(self, obj):
         return obj.votes.filter(vote_type='good').count()
 
+    @extend_schema_field(serializers.IntegerField())
     def get_ng_count(self, obj):
         return obj.votes.filter(vote_type='ng').count()
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_current_user_vote(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:

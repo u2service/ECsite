@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.db.models import Q, Count
 from ..models import Product, Category
 from ..serializers import ProductSerializer
+from drf_spectacular.utils import extend_schema
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Product.objects.all()
@@ -60,6 +61,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 class ProductComparisonView(APIView):
+    @extend_schema(responses=ProductSerializer(many=True))
     def get(self, request):
         ids_str = request.query_params.get('ids', '')
         if not ids_str:

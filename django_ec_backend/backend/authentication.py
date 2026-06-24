@@ -2,6 +2,7 @@ from django.conf import settings
 from rest_framework import exceptions
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import CSRFCheck
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 
 class CookieJWTAuthentication(JWTAuthentication):
     def authenticate(self, request):
@@ -42,3 +43,15 @@ class CookieJWTAuthentication(JWTAuthentication):
             # CSRF検証失敗
             raise exceptions.PermissionDenied(f'CSRF Failed: {reason}')
         
+class CookieJWTAuthenticationScheme(OpenApiAuthenticationExtension):
+    target_class = CookieJWTAuthentication
+    name = 'CookieJWTAuth'  # 仕様書上で表示される識別名
+
+    def get_security_definition(self, auto_schema):
+        # Swagger UIの右上にある「Authorize」ボタンを押したときの挙動を設定
+        return {
+            'type': 'apiKey',
+            'in': 'cookie',
+            'name': 'access_token',  # あなたがCookieにセットしているJWTのキー名
+        }
+    

@@ -6,17 +6,33 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from backend.authentication import CookieJWTAuthentication
 from ..models import Product, Cart, CartItem, Postage
 from ..serializers import CartSerializer, CartItemSerializer
+from drf_spectacular.utils import extend_schema
 
 class CartViewSet(viewsets.ViewSet):
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(responses=CartSerializer(many=False))
     @method_decorator(ensure_csrf_cookie)
     def list(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
         serializer = CartSerializer(cart)
         return Response(serializer.data)
-
+    
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "product_id": {"type": "integer", "description": "追加する商品のID"},
+                    "quantity": {"type": "integer", "description": "数量（デフォルト1）"}
+                },
+                "required": ["product_id"]
+            }
+        },
+        responses={200: CartSerializer},
+        description="カートに商品を追加し、最新のカート情報を返します。"
+    )
     @action(detail=False, methods=['post'], url_path='add-item')
     def add_item(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -39,6 +55,17 @@ class CartViewSet(viewsets.ViewSet):
         serializer = CartSerializer(cart)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+    @extend_schema(
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "shipping_total": {"type": "integer", "description": "計算された送料の合計金額"}
+                }
+            }
+        },
+        description="指定された都道府県（クエリパラメータ）を元に、カート内商品の送料合計を計算します。"
+    )
     @action(detail=False, methods=['get'], url_path='calculate-shipping')
     def calculate_shipping(self, request):
         """

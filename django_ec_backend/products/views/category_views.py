@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..models import Category, CategorySpecField, Product
 from ..serializers import CategoryTreeSerializer, CategorySpecFieldSerializer
+from drf_spectacular.utils import extend_schema
 
 class CategoryTreeView(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.filter(parent=None)
@@ -10,6 +11,9 @@ class CategoryTreeView(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
 
 class CategorySpecView(APIView):
+    @extend_schema(
+        responses={200: {"type": "object", "description": "カテゴリのスペック定義データ"}}
+    )
     def get(self, request, category_id):
         try:
             category = Category.objects.get(id=category_id)
@@ -30,6 +34,10 @@ class CategorySpecValuesView(APIView):
     フロントエンドで「CPU: [M1, M2]」のような絞り込み選択肢を作るために使用。
     """
     permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        responses={200: {"type": "array", "items": {"type": "string"}, "description": "スペックの選択肢一覧"}}
+    )
 
     def get(self, request, category_id):
         try:

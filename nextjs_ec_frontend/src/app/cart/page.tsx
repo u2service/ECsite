@@ -7,14 +7,20 @@ import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { loadStripe } from '@stripe/stripe-js';
 import { getFullImageUrl } from '@/utils/image';
-import { Product } from '@/types/product'; // Product 型をインポート
+// 💡 自動生成されたスキーマから必要な型をピンポイントで抽出
+import { paths } from '@/types/schema';
 
-// カートアイテムの型定義
-interface CartItem {
-  id: number;
-  product: Product;
-  quantity: number;
-}
+// ① カートAPIのGETレスポンスから「カートアイテム」の型を抽出
+// 💡 修正後：末尾に [number] を1つ追加して、配列の中身を指すようにします
+type DjangoCart = paths['/api/cart/']['get']['responses']['200']['content']['application/json'][number];
+type DjangoCartItem = DjangoCart['items'][number];
+
+// ② 送料計算APIのGETレスポンスの型を抽出
+type ShippingResponse = paths['/api/cart/calculate-shipping/']['get']['responses']['200']['content']['application/json'];
+
+// ③ チェックアウトセッションAPIのPOSTレスポンスの型を抽出
+type CheckoutResponse = paths['/api/create-checkout-session/']['post']['responses']['200']['content']['application/json'];
+
 
 // Stripeの初期化（環境変数が空の場合は空文字を渡してエラーを防ぐ）
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -31,9 +37,9 @@ const PREFECTURES = [
 ];
 
 export default function CartPage() {
-  // Context から取得する値の型を明示（ContextがまだJSのため、一時的に any 型などで透過させます）
+  // Context から取得する値の型を明示
   const { cart, loading, removeItemFromCart, updateItemQuantity } = useCart() as any;
-  const { fetchOptions } = useAuth() as any;
+  const { secureFetch, fetchOptions } = useAuth();
 
   const [selectedPrefecture, setSelectedPrefecture] = useState("");
   const [shippingTotal, setShippingTotal] = useState(0);
@@ -53,7 +59,7 @@ export default function CartPage() {
 
       setIsCalculating(true);
       try {
-        const res = await fetch(
+        const res = await secureFetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/cart/calculate-shipping/?prefecture=${encodeURIComponent(selectedPrefecture)}`,
           {
             ...fetchOptions('GET'),
@@ -61,7 +67,8 @@ export default function CartPage() {
           }
         );
         if (res.ok) {
-          const data = await res.json();
+          // 💡 返ってくるJSONデータに型を適用（タイポを防ぐ）
+          const data: ShippingResponse = await res.json();
           setShippingTotal(data.shipping_total);
           } else {
           // 401などのエラー時は警告をコンソールに出す（画面は壊さない）
@@ -100,7 +107,8 @@ export default function CartPage() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/create-checkout-session/`,
         fetchOptions('POST', { prefecture: selectedPrefecture })
       );
-      const session = await res.json();
+      // 💡 返ってくるJSONデータに型を適用
+      const session: CheckoutResponse = await res.json();
 
       if (res.ok) {
         if (session.url) {
@@ -111,7 +119,8 @@ export default function CartPage() {
         }
       } else {
         console.error('Checkout Sessionの作成に失敗:', session);
-        const errorMessage = session?.error || session?.detail || JSON.stringify(session);
+        // 💡 sessionに特定の型を付けたため、anyにキャストして安全にエラー文字列化を許可
+        const errorMessage = (session as any)?.error || (session as any)?.detail || JSON.stringify(session);
         console.error('詳細:', errorMessage);
         alert(`決済処理を開始できませんでした。詳細: ${errorMessage}`);
       }
@@ -144,7 +153,9 @@ export default function CartPage() {
       <h1 className="text-3xl font-bold mb-6">ショッピングカート</h1>
       <div className="bg-white shadow-md rounded-lg mb-6">
         {/* カートアイテムの一覧 */}
-        {cart.items.map((item: CartItem) => {
+        {/* 💡 手動定義の型から、Django直結の `DjangoCartItem` に変更 */}
+        {cart.items.map((item: DjangoCartItem) => {
+          // 💡 バックエンド側の画像フィールドの構造に合わせて自動補完が効きます
           const imageUrl = getFullImageUrl(item.product.image);
 
           return (

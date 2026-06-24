@@ -13,11 +13,32 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from ..models import Product, Cart, Order, OrderItem, Postage
 from ..utils import send_order_confirmation_email, format_stripe_phone
+from drf_spectacular.utils import extend_schema
 
 class CreateCheckoutSessionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'burst'
+
+    @extend_schema(
+        request=None,  # フロントから送られてくるボディデータは空（リクエストのみ）
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string", 
+                        "description": "StripeのチェックアウトセッションID"
+                    },
+                    "url": {
+                        "type": "string", 
+                        "description": "Next.jsがリダイレクトするためのStripe決済ページのURL"
+                    }
+                }
+            }
+        },
+        description="ログインユーザーのカート情報をもとに、Stripeのチェックアウトセッションを作成し、セッションIDと決済URLを返します。"
+    )
 
     def post(self, request, *args, **kwargs):
         # 1. フロントエンドから都道府県を取得
@@ -119,6 +140,12 @@ class CreateCheckoutSessionView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class StripeWebhookView(APIView):
+    @extend_schema(
+        request=None, 
+        responses={200: None},
+        description="Stripeからの支払い完了イベント等の通知（Webhook）を受け取り、注文ステータスを更新します。"
+    )
+    
     def post(self, request, *args, **kwargs):
         payload = request.body
         sig_header = request.META['HTTP_STRIPE_SIGNATURE']
