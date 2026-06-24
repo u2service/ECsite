@@ -310,7 +310,7 @@ AUTHENTICATION_BACKENDS = [
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1),  # 短命なアクセストークン
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # 短命なアクセストークン
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # 長命なリフレッシュトークン
     'ROTATE_REFRESH_TOKENS': True,                 # リフレッシュ時に新しいリフレッシュトークンを発行
     'BLACKLIST_AFTER_ROTATION': True,               # 使用済みトークンをブラックリストへ
