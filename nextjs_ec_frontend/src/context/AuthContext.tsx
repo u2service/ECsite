@@ -72,9 +72,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // 💡 3. 強制ログアウト処理（ゾンビ状態を画面から完全に一掃する）
   const handleSessionTimeout = useCallback(() => {
-    setUser(null);
-    // タイムアウトしたことがわかるパラメータを付与してログインへ誘導
-    router.push('/login?timeout=true');
+    // setUser(null);
+    // // タイムアウトしたことがわかるパラメータを付与してログインへ誘導
+    // router.push('/login?timeout=true');
+    console.log("セッションがタイムアウトしました（ループ防止のためリダイレクト停止中）");
   }, [router]);
 
   // 💡 4. アプリ全体の401（認証切れ）を中央監視するラッパーFetch関数
