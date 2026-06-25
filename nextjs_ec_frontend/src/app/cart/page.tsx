@@ -38,9 +38,12 @@ const PREFECTURES = [
 
 export default function CartPage() {
   // Context から取得する値の型を明示
-  const { cart, loading, removeItemFromCart, updateItemQuantity } = useCart() as any;
-  const { secureFetch, fetchOptions } = useAuth();
-
+  const { cart, loading: cartLoading, removeItemFromCart, updateItemQuantity } = useCart() as any;
+  
+  // 💡 🌟 ここで重複を回避！ loading を `authLoading` という別名で受け取ります
+  // 💡 先制ガードで使用する `user` も一緒にしっかり受け取ります
+  const { user, loading: authLoading, secureFetch, fetchOptions } = useAuth();
+  
   const [selectedPrefecture, setSelectedPrefecture] = useState("");
   const [shippingTotal, setShippingTotal] = useState(0);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -94,7 +97,7 @@ export default function CartPage() {
     };
     
     // 依存配列に JSON.stringify(cart?.items) を指定して、中身が変わった時だけ実行されるようにします
-  }, [selectedPrefecture, JSON.stringify(cart?.items), fetchOptions]);
+  }, [selectedPrefecture, JSON.stringify(cart?.items), fetchOptions, secureFetch]);
   
   const handleCheckout = async () => {
     if (!selectedPrefecture) {
@@ -129,13 +132,22 @@ export default function CartPage() {
     }
   };
 
-  if (loading) {
-    return <div className="text-center">カートを読み込んでいます...</div>;
+  // 💡 🌟 【最重要】鉄壁の先制ガード処理
+  // 認証情報の初期確認中(authLoading)、またはセッションが切れて user が null になっている場合は
+  // カートの中身を一切レンダリングせず、ただ静かに白い画面を保ってアラートのリダイレクト処理を待ちます。
+  if (authLoading || !user) {
+    return <div className="min-h-screen bg-gray-50"></div>;
+  }
+
+  // カート情報自体の読み込み判定（別名にした cartLoading を使用）
+
+  if (cartLoading) {
+    return <div className="text-center mt-10">カートを読み込んでいます...</div>;
   }
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="text-center">
+      <div className="text-center mt-10">
         <h1 className="text-2xl font-bold mb-4">カート</h1>
         <p>カートに商品がありません。</p>
         <Link href="/" className="text-blue-600 hover:underline mt-4 inline-block">
@@ -149,7 +161,7 @@ export default function CartPage() {
   const grandTotal = itemsTotal + shippingTotal;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-3xl font-bold mb-6">ショッピングカート</h1>
       <div className="bg-white shadow-md rounded-lg mb-6">
         {/* カートアイテムの一覧 */}
