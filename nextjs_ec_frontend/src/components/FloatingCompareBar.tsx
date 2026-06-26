@@ -1,12 +1,32 @@
 "use client";
 
+import React from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function FloatingCompareBar({ checkedCount, checkedIds, onClear }) {
+// ==========================================
+// 💡 Propsの型定義（Interfaces）
+// ==========================================
+interface FloatingCompareBarProps {
+  checkedCount: number;               // 選択されている商品の件数
+  checkedIds: (string | number)[];    // 選択されている商品のID配列（DjangoのIDに合わせて string または number）
+  onClear: () => void;                // クリアボタンが押された時のコールバック関数（引数なし・戻り値なし）
+}
+
+// ==========================================
+// 📄 メインコンポーネント
+// ==========================================
+export default function FloatingCompareBar({ 
+  checkedCount, 
+  checkedIds, 
+  onClear 
+}: FloatingCompareBarProps): React.ReactElement {
   const router = useRouter();
 
   // 比較ページへ遷移する処理
-  const handleCompare = () => {
+  const handleCompare = (): void => {
+    // 💡 checkedIdsが空配列だった場合の安全ガードを念のため追加
+    if (checkedIds.length === 0) return;
+
     // IDをカンマ区切りでURLパラメータにする (例: ?ids=1,2,3)
     const idsQuery = checkedIds.join(',');
     router.push(`/compare?ids=${idsQuery}`);
@@ -29,14 +49,14 @@ export default function FloatingCompareBar({ checkedCount, checkedIds, onClear }
         <div className="flex items-center gap-3">
           <button
             onClick={onClear}
-            className="text-sm text-white/80 hover:text-white underline px-2"
+            className="text-sm text-white/80 hover:text-white underline px-2 focus:outline-none"
           >
             クリア
           </button>
           
           <button
             onClick={handleCompare}
-            className="bg-white text-blue-600 px-6 py-2.5 rounded-xl font-bold hover:bg-gray-100 transition-colors shadow-sm"
+            className="bg-white text-blue-600 px-6 py-2.5 rounded-xl font-bold hover:bg-gray-100 transition-colors shadow-sm focus:outline-none"
           >
             比較する
           </button>

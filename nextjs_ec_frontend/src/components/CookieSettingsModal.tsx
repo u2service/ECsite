@@ -1,33 +1,61 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+// 💡 親のバナーコンポーネントから型定義をインポート
+import { CookieConsentSettings } from './CookieConsentBanner';
 
-export default function CookieSettingsModal({ isOpen, onClose, onSave }) {
+// ==========================================
+// 💡 Propsの型定義
+// ==========================================
+interface CookieSettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (settings: CookieConsentSettings) => void;
+}
+
+// ==========================================
+// 📄 メインコンポーネント
+// ==========================================
+export default function CookieSettingsModal({ 
+  isOpen, 
+  onClose, 
+  onSave 
+}: CookieSettingsModalProps): React.ReactElement | null {
+  
   // 初期状態のスイッチ設定（必須以外はOFF）
-  const [settings, setSettings] = useState({
-    essential: true, // 常に有効
-    performance: false, // 初期値OFF
-    advertising: false, // 初期値OFF
+  const [settings, setSettings] = useState<CookieConsentSettings>({
+    essential: true,      // 常に有効
+    performance: false,   // 初期値OFF
+    advertising: false,   // 初期値OFF
   });
 
   useEffect(() => {
+    if (!isOpen) return;
+
     // 既に保存された設定があれば読み込む
     const saved = localStorage.getItem('cookie-consent-settings');
     if (saved) {
-      setSettings(JSON.parse(saved));
+      try {
+        setSettings(JSON.parse(saved) as CookieConsentSettings);
+      } catch (e) {
+        console.error("Failed to parse cookie settings:", e);
+      }
     }
   }, [isOpen]);
 
+  // モーダルが閉じている状態なら何も描画しない
   if (!isOpen) return null;
 
-  const handleSave = () => {
+  // 選択した設定を保存して閉じる
+  const handleSave = (): void => {
     onSave(settings);
     onClose();
   };
 
-  const handleAcceptAll = () => {
-    const allOn = { essential: true, performance: true, advertising: true };
+  // クイックボタン：すべてをONにして保存して閉じる
+  const handleAcceptAll = (): void => {
+    const allOn: CookieConsentSettings = { essential: true, performance: true, advertising: true };
     setSettings(allOn);
     onSave(allOn);
     onClose();
@@ -38,8 +66,14 @@ export default function CookieSettingsModal({ isOpen, onClose, onSave }) {
       <div className="bg-white text-gray-900 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* ヘッダー */}
         <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-          <h2 className="text-xl font-bold">Cookieの詳細設定</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+          <h2 className="text-xl font-bold text-slate-900">Cookieの詳細設定</h2>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600 text-2xl focus:outline-none"
+            aria-label="閉じる"
+          >
+            &times;
+          </button>
         </div>
 
         {/* コンテンツ */}
@@ -56,7 +90,7 @@ export default function CookieSettingsModal({ isOpen, onClose, onSave }) {
                 ログイン状態の維持、ショッピングカートの保持、CSRF対策などのセキュリティおよびサイトの基本機能の提供に不可欠なCookieです。この設定をオフにすることはできません。
               </p>
             </div>
-            <div className="relative inline-block w-12 h-6 mt-1">
+            <div className="relative inline-block w-12 h-6 mt-1 flex-shrink-0">
               <input type="checkbox" checked readOnly className="sr-only peer" />
               <div className="w-full h-full bg-gray-300 rounded-full peer peer-checked:bg-blue-600 opacity-50 cursor-not-allowed"></div>
               <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform translate-x-6"></div>
@@ -71,11 +105,11 @@ export default function CookieSettingsModal({ isOpen, onClose, onSave }) {
                 訪問者数やトラフィックのソースをカウントし、サイトの利用状況を分析して改善するために使用します（例：Google Analytics）。拒否された場合、お客様の訪問データは計測されません。
               </p>
             </div>
-            <label className="relative inline-block w-12 h-6 mt-1 cursor-pointer">
+            <label className="relative inline-block w-12 h-6 mt-1 cursor-pointer flex-shrink-0">
               <input
                 type="checkbox"
                 checked={settings.performance}
-                onChange={(e) => setSettings({...settings, performance: e.target.checked})}
+                onChange={(e) => setSettings({ ...settings, performance: e.target.checked })}
                 className="sr-only peer"
               />
               <div className="w-full h-full bg-gray-300 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
@@ -91,11 +125,11 @@ export default function CookieSettingsModal({ isOpen, onClose, onSave }) {
                 お客様の興味・関心に合わせた最適な広告を配信するために使用します（例：Google広告、Metaピクセル）。拒否された場合、お客様への追跡型広告は配信されず、一般的な広告のみが表示されます。
               </p>
             </div>
-            <label className="relative inline-block w-12 h-6 mt-1 cursor-pointer">
+            <label className="relative inline-block w-12 h-6 mt-1 cursor-pointer flex-shrink-0">
               <input
                 type="checkbox"
                 checked={settings.advertising}
-                onChange={(e) => setSettings({...settings, advertising: e.target.checked})}
+                onChange={(e) => setSettings({ ...settings, advertising: e.target.checked })}
                 className="sr-only peer"
               />
               <div className="w-full h-full bg-gray-300 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
@@ -112,13 +146,13 @@ export default function CookieSettingsModal({ isOpen, onClose, onSave }) {
         <div className="px-6 py-4 border-t bg-gray-50 flex flex-col sm:flex-row gap-3 justify-end">
           <button
             onClick={handleSave}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+            className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors focus:outline-none"
           >
             選択した設定を保存する
           </button>
           <button
             onClick={handleAcceptAll}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors"
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors focus:outline-none"
           >
             すべて同意する
           </button>

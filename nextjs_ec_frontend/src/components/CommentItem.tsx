@@ -1,13 +1,37 @@
 "use client";
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
-export default function CommentItem({ comment, onVoteUpdate }) {
-  const { user, fetchOptions } = useAuth();
-  const [isVoting, setIsVoting] = useState(false);
+// ==========================================
+// 💡 型定義（Interfaces）
+// ==========================================
+export interface Comment {
+  id: number;
+  user_name: string;
+  created_at: string;
+  content: string;
+  good_count: number;
+  ng_count: number;
+  current_user_vote: 'good' | 'ng' | null; // ログインユーザーの投票状態
+}
 
-  // 日付のフォーマット (例: 2023/10/27 15:30)
+interface CommentItemProps {
+  comment: Comment;
+  onVoteUpdate: (updatedComment: Comment) => void;
+}
+
+// 投票可能なタイプを制限（文字列リテラル型）
+type VoteType = 'good' | 'ng';
+
+// ==========================================
+// 📄 メインコンポーネント
+// ==========================================
+export default function CommentItem({ comment, onVoteUpdate }: CommentItemProps): React.ReactElement {
+  const { user, fetchOptions } = useAuth();
+  const [isVoting, setIsVoting] = useState<boolean>(false);
+
+  // 日付のフォーマット (例: 2026/06/25 15:30)
   const formattedDate = new Date(comment.created_at).toLocaleString('ja-JP', {
     year: 'numeric',
     month: '2-digit',
@@ -16,7 +40,8 @@ export default function CommentItem({ comment, onVoteUpdate }) {
     minute: '2-digit',
   });
 
-  const handleVote = async (voteType) => {
+  // 💡 引数の型を VoteType に縛ることでタイポを完全に防止
+  const handleVote = async (voteType: VoteType) => {
     if (!user) {
       alert("投票するにはログインが必要です");
       return;
@@ -31,10 +56,9 @@ export default function CommentItem({ comment, onVoteUpdate }) {
       );
 
       if (res.ok) {
-        const updatedComment = await res.json();
+        const updatedComment: Comment = await res.json();
         onVoteUpdate(updatedComment);
       } else {
-        // エラー時の情報をログに出す
         console.error("Vote failed with status:", res.status);
       }
     } catch (error) {
@@ -55,12 +79,13 @@ export default function CommentItem({ comment, onVoteUpdate }) {
       <p className="text-gray-700 whitespace-pre-wrap mb-3">{comment.content}</p>
 
       <div className="flex space-x-4">
+        {/* 👍 ボタン */}
         <button
           onClick={() => handleVote('good')}
           disabled={isVoting}
-          className={`flex items-center space-x-1 text-sm px-2 py-1 rounded transition-colors ${
+          className={`flex items-center space-x-1 text-sm px-2 py-1 rounded transition-colors focus:outline-none ${
             comment.current_user_vote === 'good'
-              ? 'bg-blue-100 text-blue-600'
+              ? 'bg-blue-100 text-blue-600 font-semibold'
               : 'hover:bg-gray-100 text-gray-500'
           }`}
         >
@@ -68,12 +93,13 @@ export default function CommentItem({ comment, onVoteUpdate }) {
           <span>{comment.good_count}</span>
         </button>
 
+        {/* 👎 ボタン */}
         <button
           onClick={() => handleVote('ng')}
           disabled={isVoting}
-          className={`flex items-center space-x-1 text-sm px-2 py-1 rounded transition-colors ${
+          className={`flex items-center space-x-1 text-sm px-2 py-1 rounded transition-colors focus:outline-none ${
             comment.current_user_vote === 'ng'
-              ? 'bg-red-100 text-red-600'
+              ? 'bg-red-100 text-red-600 font-semibold'
               : 'hover:bg-gray-100 text-gray-500'
           }`}
         >

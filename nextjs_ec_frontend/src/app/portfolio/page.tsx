@@ -55,15 +55,17 @@ export function ImageSlider() {
         {/* 画像表示エリア */}
         <Image
           src={slides[currentIndex]}
-          alt={`スライド ${currentIndex + 1}`}
+          alt={`実績プレゼンテーション資料 ${currentIndex + 1}枚目`}
           fill
           className="object-contain duration-500" // 画像全体を表示し、切り替え時にふわっとさせる
+          priority={currentIndex === 0} // 1枚目だけあらかじめ優先ロードさせておくとLCPが向上します
         />
 
         {/* 左矢印ボタン */}
         <button
           onClick={prevSlide}
           className="absolute top-1/2 -translate-y-1/2 left-5 text-2xl rounded-full p-2 bg-black/30 hover:bg-black/50 text-white transition-colors"
+          aria-label="前のスライドへ"
         >
           ❮
         </button>
@@ -72,6 +74,7 @@ export function ImageSlider() {
         <button
           onClick={nextSlide}
           className="absolute top-1/2 -translate-y-1/2 right-5 text-2xl rounded-full p-2 bg-black/30 hover:bg-black/50 text-white transition-colors"
+          aria-label="次のスライドへ"
         >
           ❯
         </button>
@@ -85,6 +88,7 @@ export function ImageSlider() {
               className={`w-3 h-3 rounded-full transition-all ${
                 currentIndex === slideIndex ? 'bg-indigo-500 scale-125' : 'bg-white/50'
               }`}
+              aria-label={`${slideIndex + 1}枚目のスライドを表示`}
             />
           ))}
         </div>
@@ -103,7 +107,7 @@ export default function PortfolioPage() {
   const shortRoadmap: RoadmapItem[] = [
     { title: 'Next.jsのサーバー/クライアント境界の最適化', description: 'ページ全体を巻き込んでクライアントコンポーネント化（use client）している箇所をリファクタリング。商品名や説明文などの静的コア部分はサーバーサイド（RSC）で高速レンダリング（SEO・LCP向上）させ、「カートに入れる」などインタラクティブな末端部分だけをクライアントコンポーネントに分離する。' },
     { title: 'エラーハンドリングのモダン化', description: '現在 alert() や console.error で処理している暫定実装を、react-hot-toast や sonner を用いたノンブロッキングなトースト通知へ刷新。また、Next.jsの error.js や not-found.js を導入し、存在しない商品IDへアクセスされた際の離脱率を低下させる。' },
-    { title: '型安全性の徹底', description: '既存の .jsx コンポーネントを段階的に TypeScript (.tsx) へ移行し、大規模改修時の型崩れによるバグをコンパイル段階で検知する。' }
+    { title: '型安全性の徹底', description: '既存の .jsx コンポーネントを段階的に TypeScript (.tsx) へ移行し、any キャストを排除して大規模改修時の型崩れによるバグをコンパイル段階で完全に検知する。' }
   ];
 
   const longRoadmap: RoadmapItem[] = [

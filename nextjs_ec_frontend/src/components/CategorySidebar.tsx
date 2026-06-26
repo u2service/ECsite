@@ -1,13 +1,38 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePathname, useParams } from 'next/navigation';
 import { useFilter } from '@/context/FilterContext';
 import Link from 'next/link';
 
-// カテゴリを表示するサブコンポーネント（変更なし）
-const CategoryItem = ({ category }) => {
-  const [isOpen, setIsOpen] = useState(false);
+// ==========================================
+// 💡 型定義（Interfaces）
+// ==========================================
+interface Category {
+  id: number;
+  name: string;
+  children?: Category[];
+}
+
+interface SpecItem {
+  display_name: string;
+  values: string[];
+}
+
+// 絞り込み選択肢はキー（例: 'memory'）に対して表示名と配列を持つオブジェクト
+interface SpecOptions {
+  [key: string]: SpecItem;
+}
+
+interface CategoryItemProps {
+  category: Category;
+}
+
+// ==========================================
+// 🌿 サブコンポーネント（再帰的なカテゴリツリー表示用）
+// ==========================================
+const CategoryItem = ({ category }: CategoryItemProps): React.ReactElement => {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const hasChildren = category.children && category.children.length > 0;
 
   return (
@@ -16,7 +41,7 @@ const CategoryItem = ({ category }) => {
         {hasChildren && (
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="mr-1 text-xs w-4"
+            className="mr-1 text-xs w-4 focus:outline-none"
           >
             {isOpen ? '▼' : '▶'}
           </button>
@@ -28,7 +53,7 @@ const CategoryItem = ({ category }) => {
           {category.name}
         </Link>
       </div>
-      {hasChildren && isOpen && (
+      {hasChildren && isOpen && category.children && (
         <ul className="border-l border-gray-200">
           {category.children.map(child => (
             <CategoryItem key={child.id} category={child} />
@@ -39,25 +64,30 @@ const CategoryItem = ({ category }) => {
   );
 };
 
-export default function CategorySidebar() {
-  const [categories, setCategories] = useState([]);
-  const [specOptions, setSpecOptions] = useState({});
+// ==========================================
+// 📄 メインサイドバーコンポーネント
+// ==========================================
+export default function CategorySidebar(): React.ReactElement {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [specOptions, setSpecOptions] = useState<SpecOptions>({});
   const params = useParams();
-  const pathname = usePathname(); // 現在のパスを取得
+  const pathname = usePathname();
 
   // 現在カテゴリページ (/categories/...) にいるかどうかを判定
   const isCategoryPage = pathname.startsWith('/categories/');
-  // カテゴリページの場合のみ params.id をカテゴリIDとして扱う
-  const categoryId = isCategoryPage ? params?.id : null;
+  // カテゴリページの場合のみ params.id を文字列または配列から安全に取り出す
+  const categoryId = isCategoryPage && params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : null;
+  
+  // Contextから各種状態とハンドラ関数を取得
   const { filters, updateFilter, clearFilters } = useFilter();
 
-  // 1. カテゴリツリーの取得（初回のみ）
+  // 1. カテゴリツリーの取得（初回マウント時のみ）
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/category-tree/`);
         if (res.ok) {
-          const data = await res.json();
+          const data: Category[] = await res.json();
           setCategories(data);
         }
       } catch (err) {
@@ -67,9 +97,8 @@ export default function CategorySidebar() {
     fetchCategories();
   }, []);
 
-  // 2. カテゴリが変わったらスペック選択肢を取得（堅牢化）
+  // 2. カテゴリが変わったらスペック選択肢を取得（競合状態への堅牢化対応）
   useEffect(() => {
-    // クリーンアップ用のフラグ（競合防止）
     let isMounted = true;
 
     const fetchSpecs = async () => {
@@ -81,13 +110,11 @@ export default function CategorySidebar() {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/category-spec-values/${categoryId}/`);
         if (res.ok) {
-          const data = await res.json();
-          // コンポーネントがまだ存在し、最新のリクエストである場合のみ反映
+          const data: SpecOptions = await res.json();
           if (isMounted) {
             setSpecOptions(data);
           }
         } else {
-          // エラー（404など）の場合はクリア
           if (isMounted) setSpecOptions({});
         }
       } catch (err) {
@@ -99,7 +126,7 @@ export default function CategorySidebar() {
     fetchSpecs();
 
     return () => {
-      isMounted = false; // コンポーネントが消えるか、次のcategoryIdが来た時にフラグを倒す
+      isMounted = false; // クリーンアップ関数でフラグを倒す
     };
   }, [categoryId]);
 
@@ -107,7 +134,7 @@ export default function CategorySidebar() {
     <aside className="space-y-8">
       {/* カテゴリ一覧 */}
       <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
-        <h2 className="text-xl font-bold mb-4 border-b pb-2">カテゴリ</h2>
+        <h2 className="text-xl font-bold mb-4 border-b pb-2 text-slate-900">カテゴリ</h2>
         <ul>
           {categories.map(category => (
             <CategoryItem key={category.id} category={category} />
@@ -120,10 +147,13 @@ export default function CategorySidebar() {
         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm sticky top-4">
           <div className="flex justify-between items-center mb-4 border-b pb-2">
             <h3 className="font-bold text-lg text-gray-800">絞り込み</h3>
-            {Object.values(filters).some(v => v && v.length > 0) && (
+            {Object.values(filters).some(v => {
+              const values = v as string[] | undefined;
+              return values && values.length > 0;
+            }) && (
               <button
                 onClick={clearFilters}
-                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                className="text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
               >
                 クリア
               </button>
@@ -137,12 +167,15 @@ export default function CategorySidebar() {
               </h4>
               <div className="flex flex-wrap gap-2">
                 {spec.values.map(val => {
-                  const isActive = filters[key]?.includes(val);
+                  // Context内のfiltersは string[] であることを安全にアサーション
+                  const activeList = filters[key] as string[] | undefined;
+                  const isActive = activeList?.includes(val) || false;
+                  
                   return (
                     <button
                       key={val}
                       onClick={() => updateFilter(key, val)}
-                      className={`px-3 py-1.5 rounded-full text-xs transition-all duration-200 border ${
+                      className={`px-3 py-1.5 rounded-full text-xs transition-all duration-200 border focus:outline-none ${
                         isActive
                           ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                           : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-200"

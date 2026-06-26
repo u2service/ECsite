@@ -1,4 +1,6 @@
-export default function PrivacyPolicyPage() {
+import React from 'react';
+
+export default function PrivacyPolicyPage(): React.ReactElement {
   return (
     <div className="max-w-4xl mx-auto py-10 px-6 bg-white shadow-sm rounded-lg my-8">
       <h1 className="text-3xl font-bold mb-8 border-b pb-4">プライバシーポリシー</h1>

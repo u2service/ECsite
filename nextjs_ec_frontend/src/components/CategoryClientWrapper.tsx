@@ -1,15 +1,28 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useFilter } from '@/context/FilterContext'; // Contextを使用
+import React, { useState, useEffect } from 'react';
+import { useFilter } from '@/context/FilterContext';
 import ProductCard from '@/components/ProductCard';
 import FloatingCompareBar from '@/components/FloatingCompareBar';
+import { Product } from '@/types/product';
 
-export default function CategoryClientWrapper({ products: initialProducts, categoryId }) {
+// ==========================================
+// 💡 型定義（Interfaces）
+// ==========================================
+
+interface CategoryClientWrapperProps {
+  products: Product[];
+  categoryId: string | number;
+}
+
+export default function CategoryClientWrapper({ 
+  products: initialProducts, 
+  categoryId 
+}: CategoryClientWrapperProps): React.ReactElement {
   // サーバーから渡された初期商品またはフィルタ後の商品を管理
-  const [products, setProducts] = useState(initialProducts);
-  const [checkedIds, setCheckedIds] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [checkedIds, setCheckedIds] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Contextから現在のフィルタ状態と、フィルタを操作する関数を取得
   const { filters, setFilters } = useFilter();
@@ -24,7 +37,10 @@ export default function CategoryClientWrapper({ products: initialProducts, categ
   // 2. フィルタ状態（filters）が変更されたら、APIを叩いて商品を再取得（複数選択対応）
   useEffect(() => {
     // フィルタが空であり、かつ現在の表示が初期商品と同じならリクエストをスキップ
-    const isFiltersEmpty = Object.values(filters).every(v => !v || v.length === 0);
+    // 💡 Object.values(filters) の各値を string[] 型として明示的に扱う
+    const isFiltersEmpty = Object.values(filters).every(
+      (v) => !v || (v as string[]).length === 0
+    );
     if (isFiltersEmpty && products === initialProducts) return;
 
     const fetchFilteredProducts = async () => {
@@ -34,7 +50,9 @@ export default function CategoryClientWrapper({ products: initialProducts, categ
 
         // Context内のフィルタ（配列）をカンマ区切りでパラメータ化
         // 例: spec_memory=8GB,16GB
-        Object.entries(filters).forEach(([key, values]) => {
+        // 💡 entries をループする際、values が文字列の配列であることを明示
+        Object.entries(filters).forEach(([key, value]) => {
+          const values = value as string[]; // 👈 ここで型を確定させる
           if (values && values.length > 0) {
             url += `&spec_${key}=${encodeURIComponent(values.join(','))}`;
           }
@@ -42,7 +60,7 @@ export default function CategoryClientWrapper({ products: initialProducts, categ
 
         const res = await fetch(url);
         if (res.ok) {
-          const data = await res.json();
+          const data: Product[] = await res.json();
           setProducts(data);
         }
       } catch (error) {
@@ -53,10 +71,11 @@ export default function CategoryClientWrapper({ products: initialProducts, categ
     };
 
     fetchFilteredProducts();
+    // 💡 無限ループ防止のため依存配列に products 自身は含めない
   }, [filters, categoryId]);
 
   // 比較チェックのハンドラ
-  const handleCheck = (id, isChecked) => {
+  const handleCheck = (id: number, isChecked: boolean): void => {
     setCheckedIds(prev => isChecked ? [...prev, id] : prev.filter(i => i !== id));
   };
 

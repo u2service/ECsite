@@ -1,4 +1,6 @@
-export default function DisclaimerBanner() {
+import React from 'react';
+
+export default function DisclaimerBanner(): React.ReactElement {
   return (
     <div className="sticky top-0 z-50 bg-amber-400 text-black py-2 px-4 text-center text-sm font-bold shadow-sm">
       <span className="inline-block mr-2">⚠️</span>

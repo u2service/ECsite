@@ -1,12 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import CookieSettingsModal from './CookieSettingsModal';
 
-export default function CookieConsentBanner() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+// ==========================================
+// 💡 型定義（Interfaces）
+// ==========================================
+export interface CookieConsentSettings {
+  essential: boolean;
+  performance: boolean;
+  advertising: boolean;
+}
+
+// ==========================================
+// 📄 メインコンポーネント
+// ==========================================
+export default function CookieConsentBanner(): React.ReactElement | null {
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
   useEffect(() => {
     // 同意状態を確認（詳細設定の有無を優先的に確認）
@@ -20,8 +32,8 @@ export default function CookieConsentBanner() {
   }, []);
 
   // すべてを受け入れる（クイックボタン）
-  const handleAcceptAll = () => {
-    const allOn = { essential: true, performance: true, advertising: true };
+  const handleAcceptAll = (): void => {
+    const allOn: CookieConsentSettings = { essential: true, performance: true, advertising: true };
     localStorage.setItem('cookie-consent-settings', JSON.stringify(allOn));
     localStorage.setItem('cookie-consent-level', 'all');
     setIsVisible(false);
@@ -29,8 +41,8 @@ export default function CookieConsentBanner() {
   };
 
   // 必須のみ許可（クイックボタン）
-  const handleEssentialOnly = () => {
-    const essentialOnly = { essential: true, performance: false, advertising: false };
+  const handleEssentialOnly = (): void => {
+    const essentialOnly: CookieConsentSettings = { essential: true, performance: false, advertising: false };
     localStorage.setItem('cookie-consent-settings', JSON.stringify(essentialOnly));
     localStorage.setItem('cookie-consent-level', 'essential');
     setIsVisible(false);
@@ -38,7 +50,8 @@ export default function CookieConsentBanner() {
   };
 
   // 詳細設定モーダルからの保存
-  const handleSaveDetailedSettings = (newSettings) => {
+  // 💡 引数にしっかりと設定オブジェクトの型を明示
+  const handleSaveDetailedSettings = (newSettings: CookieConsentSettings): void => {
     localStorage.setItem('cookie-consent-settings', JSON.stringify(newSettings));
 
     // 従来のロジックとの互換性維持：パフォーマンスか広告のどちらかがONなら 'all' とする
@@ -78,7 +91,7 @@ export default function CookieConsentBanner() {
               {/* 詳細設定ボタン */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="text-sm text-gray-400 hover:text-white underline mr-4"
+                className="text-sm text-gray-400 hover:text-white underline mr-4 focus:outline-none"
               >
                 詳細設定
               </button>
@@ -86,7 +99,7 @@ export default function CookieConsentBanner() {
               {/* 必須のみ許可ボタン */}
               <button
                 onClick={handleEssentialOnly}
-                className="border border-gray-500 hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded transition-colors"
+                className="border border-gray-500 hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded transition-colors focus:outline-none"
               >
                 必須Cookieのみ許可（拒否）
               </button>
@@ -94,7 +107,7 @@ export default function CookieConsentBanner() {
               {/* すべて許可ボタン */}
               <button
                 onClick={handleAcceptAll}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-6 rounded transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-6 rounded transition-colors focus:outline-none"
               >
                 すべてのCookieを受け入れる
               </button>
@@ -103,7 +116,7 @@ export default function CookieConsentBanner() {
         </div>
       )}
 
-      {/* 詳細設定モーダル（常にレンダリング準備はしておくが isOpen で制御） */}
+      {/* 詳細設定モーダル */}
       <CookieSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

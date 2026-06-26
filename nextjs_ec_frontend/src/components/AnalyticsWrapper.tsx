@@ -1,11 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 
-export default function AnalyticsWrapper() {
-  const [settings, setSettings] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+// ==========================================
+// 💡 型定義（Interfaces）
+// ==========================================
+interface CookieConsentSettings {
+  essential: boolean;
+  performance: boolean;
+  advertising: boolean;
+}
+
+export default function AnalyticsWrapper(): React.ReactElement | null {
+  // ① settings の初期値は null、または CookieConsentSettings 構造体であることを明示
+  const [settings, setSettings] = useState<CookieConsentSettings | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     // コンポーネントがマウントされたらlocalStorageを確認
@@ -13,8 +23,13 @@ export default function AnalyticsWrapper() {
     const legacyLevel = localStorage.getItem('cookie-consent-level');
 
     if (saved) {
-      // 詳細設定（オブジェクト形式）がある場合
-      setSettings(JSON.parse(saved));
+      try {
+        // 詳細設定（オブジェクト形式）がある場合
+        const parsed: CookieConsentSettings = JSON.parse(saved);
+        setSettings(parsed);
+      } catch (error) {
+        console.error('Failed to parse cookie-consent-settings:', error);
+      }
     } else if (legacyLevel) {
       // 以前の簡易設定（文字列形式）がある場合の互換性維持
       setSettings({

@@ -238,12 +238,14 @@ REST_FRAMEWORK = {
     ),
     # ▼ ここから追記 ▼
     'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',   # 未ログインユーザー用
+        # 'rest_framework.throttling.AnonRateThrottle',   # 未ログインユーザー用
         'rest_framework.throttling.UserRateThrottle',   # ログイン済みユーザー用
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',      # 未ログイン：1日100リクエストまで（厳しめ）
-        'user': '1000/day',     # ログイン済：1日1000リクエストまで
+        # 'anon': '100/day',      # 未ログイン：1日100リクエストまで（厳しめ）
+        'anon': '1000/min', # 開発中は上限を大幅に引き上げる
+        # 'user': '1000/day',     # ログイン済：1日1000リクエストまで
+        'user': '1000/min',
         'burst': '10/minute',   # 短時間の連打対策（個別に適用）
         'sensitive': '5/minute',# ログインなど機密性の高い操作用
     }

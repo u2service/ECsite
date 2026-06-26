@@ -3,18 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function SearchBar() {
+export default function SearchBar(): React.ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState<string>(''); // string型を明示しておくとより丁寧です
 
   // 初回レンダリング時やURLが変わった時に検索ワードを同期させる
   useEffect(() => {
     setQuery(searchParams.get('q') || '');
   }, [searchParams]);
 
-  // 引数 e に React.FormEvent 型を指定します
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+  // フォーム送信時の処理
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     if (query.trim()) {
       router.push(`/?q=${encodeURIComponent(query.trim())}`);
@@ -30,7 +30,7 @@ export default function SearchBar() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="商品を検索..."
-        className="px-3 py-1 border rounded-l-md text-white focus:outline-none w-32 md:w-64"
+        className="px-3 py-1 border rounded-l-md text-gray-900 focus:outline-none w-32 md:w-64"
       />
       <button
         type="submit"

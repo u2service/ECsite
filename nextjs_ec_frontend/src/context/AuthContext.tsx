@@ -3,7 +3,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback, Rea
 import { useRouter, usePathname } from 'next/navigation';
 
 // 💡 1. ユーザーオブジェクトの型定義
-interface User {
+export interface User {
   pk: number;
   username: string;
   email: string;
@@ -35,17 +35,17 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+// 💡 通常の関数コンポーネントの記述にして、戻り値を React.ReactElement に確定させます
+export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElement => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   
-  // 💡 ① タイムアウト処理の重複実行を防ぐフラグ（useRef）
+  // タイムアウト処理の重複実行を防ぐフラグ
   const isTimingOutRef = useRef<boolean>(false);
   
   const router = useRouter();
-  // 💡 ここで現在のパス（/cart など）をリアルタイムに監視します
   const pathname = usePathname(); 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
   // --- CookieからCSRFトークンを取得するヘルパー関数 ---
   const getCsrfToken = (): string | null => {
@@ -67,34 +67,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
 
-    return {
+    const options: RequestInit = {
       method,
       headers,
       credentials: 'include',
-      ...(body && { body: JSON.stringify(body) }),
     };
+
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
+
+    return options;
   }, []);
 
-  // 💡 3. タイムアウト処理（特定のログイン必須画面のみアラートを出してトップへ避難）
+  // 3. タイムアウト処理
   const handleSessionTimeout = useCallback(() => {
     if (typeof window === 'undefined') return;
 
     const currentPath = window.location.pathname;
 
-    // 🚨 安全ガード1: ログイン画面やパスワードリセット画面なら即終了（ループ防止）
     if (currentPath === '/login' || currentPath === '/forgot-password' || currentPath.startsWith('/password-reset-confirm')) {
       return;
     }
 
-    // 🚨 安全ガード2: すでに別API経由でタイムアウトアラート表示中なら重複させない
     if (isTimingOutRef.current) {
       return;
     }
     
-    // フラグをロック
     isTimingOutRef.current = true;
 
-    // ログイン必須ページかどうかの判定（カート、決済、成功、失敗画面）
     const isAuthRequiredPage = 
       currentPath.startsWith('/cart') || 
       currentPath.startsWith('/checkout') || 
@@ -103,27 +104,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       currentPath.startsWith('/cancel');
 
     if (isAuthRequiredPage) {
-      // ① ログイン必須画面の場合は、ポップアップでお知らせしてトップへ戻す
       alert("タイムアウトによりログアウトされました。");
       setUser(null);
       router.push('/');
     } else {
-      // ② それ以外の一般画面（商品一覧や詳細など）なら、アラートは出さずに静かに状態だけクリア
       setUser(null);
     }
 
-    // 処理が落ち着いた後にフラグをゆっくり戻す
     setTimeout(() => {
       isTimingOutRef.current = false;
     }, 1000);
     
   }, [router]);
 
-  // 💡 4. アプリ全体の401（認証切れ）を中央監視するラッパーFetch関数
+  // 4. アプリ全体の401（認証切れ）を中央監視するラッパーFetch関数
   const secureFetch = useCallback(async (url: string, options: RequestInit): Promise<Response> => {
     const res = await fetch(url, options);
     
-    // バックエンドが「認証なし(401)」を返してきたら即座にタイムアウト処理をキック
     if (res.status === 401) {
       console.warn("セッションの有効期限が切れたか、未認証です。自動ログアウトします。");
       handleSessionTimeout();
@@ -154,11 +151,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkUserStatus();
   }, [checkUserStatus]);
 
-  // 💡 🌟 ページ遷移時の先制セキュリティガード
-  // カート画面や決済画面を開いた「その瞬間」に、裏でトークンの有効性を強制チェックします
+  // ページ遷移時の先制セキュリティガード
   useEffect(() => {
-
-    // 💡 window.location.pathname の代わりに、Next.js公式の pathname を使用
     const currentPath = pathname; 
 
     const isAuthRequiredPage = 
@@ -179,10 +173,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       verifySessionOnNavigate();
     }
-  }, [pathname, secureFetch, fetchOptions, apiUrl]); // 💡 依存配列に pathname を入れることで、ページ移動の瞬間に確実に実行されます
+  }, [pathname, secureFetch, fetchOptions, apiUrl]);
 
   // 2. ログイン
-  const loginUser = useCallback(async (email: string, password: string) => {
+  const loginUser = useCallback(async (email: string, password: string): Promise<void> => {
     try {
       const res = await fetch(`${apiUrl}/api/auth/login/`, fetchOptions('POST', { email, password }));
       if (res.ok) {
@@ -199,7 +193,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [apiUrl, fetchOptions, router]);
 
   // 3. ログアウト
-  const logoutUser = useCallback(async () => {
+  const logoutUser = useCallback(async (): Promise<void> => {
     try {
       await fetch(`${apiUrl}/api/auth/logout/`, fetchOptions('POST'));
     } catch (error) {
@@ -211,7 +205,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [apiUrl, fetchOptions, router]);
 
   // 4. 会員登録
-  const registerUser = useCallback(async (username: string, password: string, email: string = "") => {
+  // 💡 【修正点】構文ミスを綺麗に直しました！
+  const registerUser = useCallback(async (username: string, password: string, email: string = ""): Promise<void> => {
     try {
       const res = await fetch(
         `${apiUrl}/api/auth/registration/`, 

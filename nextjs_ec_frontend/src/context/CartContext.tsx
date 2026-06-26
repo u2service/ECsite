@@ -1,21 +1,67 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from './AuthContext'; // ログイン状態を取得するために使用
 
-const CartContext = createContext();
+// ==========================================
+// 💡 カート構造の型定義
+// ==========================================
+export interface CartItem {
+  id: number;
+  product_id?: number;
+  product?: {
+    id: number;
+    name: string;
+    price: number;
+    image?: string;
+  };
+  quantity: number;
+  [key: string]: any;
+}
 
-export const useCart = () => useContext(CartContext);
+export interface Cart {
+  items: CartItem[];
+  grand_total: number;
+  total_items?: number;
+}
 
-export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(null);
-  const [loading, setLoading] = useState(true);
+// 💡 Context が外部に提供する値（関数・ステート）の型定義
+interface CartContextType {
+  cart: Cart | null;
+  loading: boolean;
+  fetchCart: () => Promise<void>;
+  addItemToCart: (productId: number, quantity: number) => Promise<void>;
+  removeItemFromCart: (itemId: number) => Promise<void>;
+  updateItemQuantity: (itemId: number, quantity: number) => Promise<void>;
+  clearCart: () => void;
+}
+
+const CartContext = createContext<CartContextType | undefined>(undefined);
+
+export const useCart = (): CartContextType => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
+};
+
+interface CartProviderProps {
+  children: ReactNode;
+}
+
+// ==========================================
+// 📄 プロバイダーコンポーネント
+// ==========================================
+export const CartProvider = ({ children }: CartProviderProps): React.ReactElement => {
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const { user, fetchOptions } = useAuth(); // AuthContextからユーザー情報と共通のfetchオプションを取得
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
-  // カート情報を取得または作成する関数を useCallback で囲む
-  const fetchCart = useCallback(async () => {
-    console.log("fetchCart: 取得開始"); // 追加
+  // カート情報を取得または作成する関数
+  const fetchCart = useCallback(async (): Promise<void> => {
+    console.log("fetchCart: 取得開始");
     if (!user) {
       setCart(null);
       setLoading(false);
@@ -25,7 +71,7 @@ export const CartProvider = ({ children }) => {
     try {
       const res = await fetch(`${apiUrl}/api/cart/`, fetchOptions('GET'));
       if (res.ok) {
-        const data = await res.json();
+        const data: Cart = await res.json();
 
         // ★ レースコンディション対策：
         // URLに session_id が含まれている場合は、決済直後なのでサーバーのデータが古くても無視して空にする
@@ -45,15 +91,15 @@ export const CartProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [user, apiUrl, fetchOptions]); // 依存関係を指定
+  }, [user, apiUrl, fetchOptions]);
 
   // ユーザーのログイン状態が変わったらカートを再取得
   useEffect(() => {
     fetchCart();
-  }, [fetchCart]); // fetchCart 自体を依存配列に入れます
+  }, [fetchCart]);
 
   // カートに商品を追加する関数
-  const addItemToCart = useCallback(async (productId, quantity) => {
+  const addItemToCart = useCallback(async (productId: number, quantity: number): Promise<void> => {
     if (!user) {
       alert("ログインしてください。");
       return;
@@ -64,7 +110,7 @@ export const CartProvider = ({ children }) => {
         quantity: quantity,
       }));
       if (res.ok) {
-        const data = await res.json();
+        const data: Cart = await res.json();
         setCart(data); // サーバーからの最新のカート情報で更新
         alert("カートに商品を追加しました。");
       } else {
@@ -75,10 +121,10 @@ export const CartProvider = ({ children }) => {
     } catch (error) {
       console.error("Error adding item to cart:", error);
     }
-  }, [user, apiUrl, fetchOptions]); // 依存関係を指定
+  }, [user, apiUrl, fetchOptions]);
 
   // カート内の商品を削除する関数
-  const removeItemFromCart = useCallback(async (itemId) => {
+  const removeItemFromCart = useCallback(async (itemId: number): Promise<void> => {
     try {
       const res = await fetch(`${apiUrl}/api/cart-items/${itemId}/`, fetchOptions('DELETE'));
       if (res.ok) {
@@ -90,10 +136,10 @@ export const CartProvider = ({ children }) => {
     } catch (error) {
       console.error("Error removing item:", error);
     }
-  }, [user, apiUrl, fetchOptions]); // 依存関係を指定
+  }, [apiUrl, fetchOptions, fetchCart]);
 
   // カート内の商品の数量を更新する関数
-  const updateItemQuantity = useCallback(async (itemId, quantity) => {
+  const updateItemQuantity = useCallback(async (itemId: number, quantity: number): Promise<void> => {
     if (quantity < 1) {
       // 数量が0以下の場合は商品を削除
       removeItemFromCart(itemId);
@@ -114,32 +160,28 @@ export const CartProvider = ({ children }) => {
     }
   }, [apiUrl, fetchOptions, fetchCart, removeItemFromCart]);
 
-  const value = {
-    cart,
-    loading,
-    fetchCart,
-    addItemToCart,
-    removeItemFromCart,
-    updateItemQuantity,
-  };
-
   // カートを空にする関数
-  const clearCart = () => {
-    // 1. フロントエンドのステートを初期値に戻す
+  // 💡 useCallbackでラップし、型安全に外部に提供できるよう修正
+  const clearCart = useCallback((): void => {
+    // フロントエンドのステートを初期値に戻す
     setCart({
       items: [],
       grand_total: 0,
-      total_items: 0 // もし定義していれば
+      total_items: 0
     });
-    
-    // 2. もし localStorage などを使っている場合はそれも消す
-    // localStorage.removeItem('cart_data');
-
     console.log("Cart state has been cleared.");
-  };
+  }, []);
   
   return (
-    <CartContext.Provider value={{ cart, loading, addItemToCart, removeItemFromCart, updateItemQuantity, clearCart }}>
+    <CartContext.Provider value={{ 
+      cart, 
+      loading, 
+      fetchCart, // 💡 プロバイダー値への入れ忘れを補填しました
+      addItemToCart, 
+      removeItemFromCart, 
+      updateItemQuantity, 
+      clearCart 
+    }}>
       {children}
     </CartContext.Provider>
   );

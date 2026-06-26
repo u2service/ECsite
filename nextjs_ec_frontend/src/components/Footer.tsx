@@ -1,9 +1,10 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 
-export default function Footer() {
-  const handleResetConsent = () => {
+export default function Footer(): React.ReactElement {
+  const handleResetConsent = (): void => {
     // ユーザーに確認を求める
     if (confirm('Cookieの設定をリセットして、再度選択し直しますか？')) {
       // 古いキーと新しいキーの両方を削除
@@ -40,7 +41,7 @@ export default function Footer() {
           {/* Cookie設定のリセットボタン */}
           <button
             onClick={handleResetConsent}
-            className="text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
+            className="text-xs text-gray-400 hover:text-gray-600 underline transition-colors focus:outline-none"
           >
             Cookie設定をやり直す
           </button>

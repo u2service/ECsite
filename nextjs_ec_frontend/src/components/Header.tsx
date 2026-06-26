@@ -1,10 +1,9 @@
-// src/components/Header.jsx
-import { Suspense } from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 import SearchBar from './SearchBar'; 
 import UserNav from './UserNav'; // 動的な部分を切り出す
 
-export default function Header() {
+export default function Header(): React.ReactElement {
   return (
     <header className="bg-gray-800 text-white p-4">
       <div className="container mx-auto flex justify-between items-center">
@@ -13,7 +12,9 @@ export default function Header() {
           My EC Store
         </Link>
 
-        <Link href="/portfolio">ポートフォリオを見る</Link>
+        <Link href="/portfolio" className="hover:text-gray-300 transition-colors">
+          ポートフォリオを見る
+        </Link>
 
         {/* 検索バーは通常入力を伴うので CC のまま (後で最適化可能) */}
         <Suspense fallback={<div className="w-48 h-8 bg-gray-700 rounded-md animate-pulse" />}>
@@ -21,7 +22,9 @@ export default function Header() {
         </Suspense>
 
         <nav className="flex items-center">
-          <Link href="/" className="mr-4">ホーム</Link>
+          <Link href="/" className="mr-4 hover:text-gray-300 transition-colors">
+            ホーム
+          </Link>
           
           {/* ユーザー情報やカート数など、Contextが必要な部分だけを切り出す */}
           <UserNav />
