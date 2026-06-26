@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import ProductClientWrapper from '@/components/ProductClientWrapper'; // 後で作る
+import ProductClientWrapper from '@/components/ProductClientWrapper';
 import CommentSection from '@/components/CommentSection';
+import { Product } from '@/types/product';
 
 // ==========================================
 // 💡 型定義（Interfaces）
@@ -14,22 +15,6 @@ interface CategoryPath {
 interface SpecDefinition {
   name: string;
   label: string;
-}
-
-interface Product {
-  id: number;
-  name: string;
-  brand?: {
-    name: string;
-  };
-  category: {
-    id: number;
-    name: string;
-  };
-  category_path?: CategoryPath[];
-  // インデックスシグネチャを用いて動的なスペック値に対応
-  specifications?: Record<string, string | number | boolean>;
-  [key: string]: any; // その他の未知のフィールド用（必要に応じて厳格化可能）
 }
 
 // Next.js のページコンポーネント用 Params 型
@@ -80,7 +65,7 @@ export default async function ProductPage({ params }: PageProps): Promise<React.
       <nav className="flex text-sm text-gray-500 mb-6">
         <ol className="flex items-center space-x-2">
           <li><Link href="/" className="hover:text-blue-600">ホーム</Link></li>
-          {product.category_path?.map((path) => (
+          {(product as any).category_path?.map((path: CategoryPath) => (
             <li key={path.id} className="flex items-center space-x-2">
               <span>&gt;</span>
               <Link href={`/categories/${path.id}`} className="hover:text-blue-600">
