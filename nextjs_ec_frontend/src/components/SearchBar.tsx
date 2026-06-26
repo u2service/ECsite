@@ -30,7 +30,7 @@ export default function SearchBar(): React.ReactElement {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="商品を検索..."
-        className="px-3 py-1 border rounded-l-md text-gray-900 focus:outline-none w-32 md:w-64"
+        className="px-3 py-1 border rounded-l-md focus:outline-none w-32 md:w-64"
       />
       <button
         type="submit"
