@@ -20,11 +20,25 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+
+        # 1. まずベースとなるクエリセットを取得（select_related と annotate）
         queryset = Comment.objects.select_related('user') \
             .annotate(
                 good_count_annotated=Count('votes', filter=Q(votes__vote_type='good')),
                 ng_count_annotated=Count('votes', filter=Q(votes__vote_type='ng'))
             )
+        
+        # 2. 【重要】リクエストから product_id を取得してフィルタリング
+        # クエリパラメータ（?product_id=X）から取る場合
+        product_id = self.request.query_params.get('product_id')
+        # もしURLのパス（/products/<product_id>/comments/）から取る場合は以下
+        # product_id = self.kwargs.get('product_pk') or self.kwargs.get('product_id')
+
+        if product_id is not None:
+            queryset = queryset.filter(product_id=product_id)
+        else:
+            # もし商品IDが指定されていない場合は、空のリストを返す（または全件返すか、設計に合わせる）
+            queryset = queryset.none()
         
         # ログイン中なら、その人の投票を prefetch して current_user_vote の N+1 を防ぐ
         if user.is_authenticated:
