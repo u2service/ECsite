@@ -1,3 +1,5 @@
+from django.db import models
+from django.db.models import Count, Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -17,10 +19,18 @@ class CommentViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_queryset(self):
-        queryset = Comment.objects.all()
-        product_id = self.request.query_params.get('product_id')
-        if product_id:
-            queryset = queryset.filter(product_id=product_id)
+        user = self.request.user
+        queryset = Comment.objects.select_related('user') \
+            .annotate(
+                good_count_annotated=Count('votes', filter=Q(votes__vote_type='good')),
+                ng_count_annotated=Count('votes', filter=Q(votes__vote_type='ng'))
+            )
+        
+        # ログイン中なら、その人の投票を prefetch して current_user_vote の N+1 を防ぐ
+        if user.is_authenticated:
+            queryset = queryset.prefetch_related(
+                models.Prefetch('votes', queryset=CommentVote.objects.filter(user=user))
+            )
         return queryset
 
     def perform_create(self, serializer):

@@ -183,18 +183,20 @@ class CommentSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.IntegerField())
     def get_good_count(self, obj):
-        return obj.votes.filter(vote_type='good').count()
+        return getattr(obj, 'good_count_annotated', obj.votes.filter(vote_type='good').count())
 
     @extend_schema_field(serializers.IntegerField())
     def get_ng_count(self, obj):
-        return obj.votes.filter(vote_type='ng').count()
+        return getattr(obj, 'ng_count_annotated', obj.votes.filter(vote_type='ng').count())
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_current_user_vote(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             vote = obj.votes.filter(user=request.user).first()
-            return vote.vote_type if vote else None
+            votes_list = getattr(obj, '_prefetched_objects_cache', {}).get('votes', obj.votes.all())
+            vote = next((v for v in votes_list if v.user_id == request.user.id), None)
+
         return None
 
 class CommentVoteSerializer(serializers.ModelSerializer):
