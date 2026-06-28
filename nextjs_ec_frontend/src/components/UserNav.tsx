@@ -41,13 +41,12 @@ export default function UserNav(): React.ReactElement {
       // ② その場でバックエンドに「セッションがまだ生きているか」を問い合わせる
       const res = await secureFetch(`${apiUrl}/api/auth/user/`, fetchOptions('GET'));
       
-      if (res.ok) {
-        // 🍏 セッションが正常なら、ここで初めて目的のページへ安全に遷移
+      // 🍏 セッションが正常（ok: true）なら、ここで初めて目的のページへ安全に遷移
+      if (res && res.ok) {
         router.push(destinationPath);
-      } else {
-        // 🍎 401（タイムアウト）だった場合
-        alert("タイムアウトにによりログアウトされました。");
-      }
+      } 
+      // 💡 401の時は res.ok が false になるため、何もせずここをスルーします。
+      // アラートとログアウト処理は AuthContext の handleSessionTimeout が1回だけ実行してくれます。
     } catch (error) {
       console.error(`${destinationPath} 移動前のセッションチェックに失敗しました:`, error);
     }

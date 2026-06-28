@@ -81,20 +81,19 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
   }, []);
 
   // 3. タイムアウト処理
-  const handleSessionTimeout = useCallback(() => {
+  const handleSessionTimeout = useCallback((destinationPath: string = '') => {
     if (typeof window === 'undefined') return;
+
+    // 💡 既にタイムアウト処理が走っているなら、即座に何もしないで終了
+    if (isTimingOutRef.current) return;
+    isTimingOutRef.current = true;
 
     const currentPath = window.location.pathname;
 
     if (currentPath === '/login' || currentPath === '/forgot-password' || currentPath.startsWith('/password-reset-confirm')) {
+      isTimingOutRef.current = false; // ログイン画面等の場合はフラグを戻す
       return;
     }
-
-    if (isTimingOutRef.current) {
-      return;
-    }
-    
-    isTimingOutRef.current = true;
 
     const isAuthRequiredPage = 
       currentPath.startsWith('/cart') || 
@@ -102,7 +101,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
       currentPath.startsWith('/orders') ||
       currentPath.startsWith('/success') || 
       currentPath.startsWith('/cancel');
-
+      destinationPath.startsWith('/cart') ||     // ✨ 追加
+      destinationPath.startsWith('/checkout') || // ✨ 追加
+      destinationPath.startsWith('/orders');     // ✨ 追加
+    
     if (isAuthRequiredPage) {
       alert("タイムアウトによりログアウトされました。");
       setUser(null);
@@ -113,7 +115,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
 
     setTimeout(() => {
       isTimingOutRef.current = false;
-    }, 1000);
+    }, 3000);
     
   }, [router]);
 
@@ -123,7 +125,14 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
     
     if (res.status === 401) {
       console.warn("セッションの有効期限が切れたか、未認証です。自動ログアウトします。");
-      handleSessionTimeout();
+      handleSessionTimeout('/cart');
+      // 💡 エラーを投げず、呼び出し元（UserNavなど）に偽の「失敗レスポンス」を返す
+      // これにより、Next.jsの画面クラッシュを防ぎつつ、res.ok = false で判定させます
+      return {
+        ...res,
+        ok: false,
+        status: 401,
+      } as Response;
     }
     return res;
   }, [handleSessionTimeout]);
@@ -138,8 +147,14 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
       } else {
         setUser(null);
       }
-    } catch (error) {
-      console.error("Check status error:", error);
+    } catch (error: any) {
+      // 💡 タイムアウトエラー(Unauthorized session)なら、すでにhandleSessionTimeout側で
+      // 処理されているので、ここでは静かにログだけ出して処理を流します。
+      if (error.message === "Unauthorized session") {
+        console.log("セッションチェック：タイムアウトを検知したため処理を中断しました。");
+      } else {
+        console.error("Check status error:", error);
+      }
       setUser(null);
     } finally {
       setLoading(false);
@@ -167,8 +182,12 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
         try {
           console.log(`💡 ${currentPath} への遷移を検知。セッションの先制チェックを行います...`);
           await secureFetch(`${apiUrl}/api/auth/user/`, fetchOptions('GET'));
-        } catch (error) {
-          console.error("Navigation session verification failed:", error);
+        } catch (error: any) {
+          if (error.message === "Unauthorized session") {
+            console.log("遷移時の先制チェック：タイムアウトを安全にハンドルしました。");
+          } else {
+            console.error("Navigation session verification failed:", error);
+          }
         }
       };
       verifySessionOnNavigate();
