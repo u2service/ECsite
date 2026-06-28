@@ -46,8 +46,7 @@ export default function UserNav(): React.ReactElement {
         router.push(destinationPath);
       } else {
         // 🍎 401（タイムアウト）だった場合
-        // secureFetch 内部のインターセプターが自動でログアウトや画面リダイレクトを
-        // 処理するため、ここでは何もしなくてOK
+        alert("タイムアウトにによりログアウトされました。");
       }
     } catch (error) {
       console.error(`${destinationPath} 移動前のセッションチェックに失敗しました:`, error);
@@ -57,16 +56,17 @@ export default function UserNav(): React.ReactElement {
   return (
     <div className="flex items-center">
       {/* 💡 カートボタンのクリックを先制コントロール */}
-      <a 
-        href="/cart" 
-        onClick={(e) => handleProtectedNavigation(e, '/cart')} 
-        className="mr-4 hover:underline cursor-pointer"
-      >
-        カート {user && totalItems > 0 && `(${totalItems})`}
-      </a>
-      
       {user ? (
         <>
+
+        <a 
+          href="/cart" 
+          onClick={(e) => handleProtectedNavigation(e, '/cart')} 
+          className="mr-4 hover:underline cursor-pointer"
+        >
+          カート {user && totalItems > 0 && `(${totalItems})`}
+        </a>
+      
           <span className="mr-4 text-sm hidden md:inline">ようこそ, {user.username}さん</span>
           
           {/* 💡 注文履歴ボタンのクリックも同様に先制コントロール */}
