@@ -90,10 +90,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
 
     const currentPath = window.location.pathname;
 
-    if (currentPath === '/login' || currentPath === '/forgot-password' || currentPath.startsWith('/password-reset-confirm')) {
-      isTimingOutRef.current = false; // ログイン画面等の場合はフラグを戻す
-      return;
-    }
+    // if (currentPath === '/login' || currentPath === '/forgot-password' || currentPath.startsWith('/password-reset-confirm')) {
+    //   isTimingOutRef.current = false; // ログイン画面等の場合はフラグを戻す
+    //   return;
+    // }
 
     const isAuthRequiredPage = 
       currentPath.startsWith('/cart') || 
