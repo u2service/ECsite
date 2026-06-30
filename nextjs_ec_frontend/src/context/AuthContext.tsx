@@ -101,6 +101,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
       currentPath.startsWith('/orders') ||
       currentPath.startsWith('/success') || 
       currentPath.startsWith('/cancel');
+      destinationPath.startsWith('/cart') ||     // ✨ 追加
+      destinationPath.startsWith('/checkout') || // ✨ 追加
+      destinationPath.startsWith('/orders');     // ✨ 追加
     
     if (isAuthRequiredPage) {
       alert("タイムアウトによりログアウトされました。");
