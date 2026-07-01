@@ -166,34 +166,6 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
     checkUserStatus();
   }, [checkUserStatus]);
 
-  // ページ遷移時の先制セキュリティガード
-  useEffect(() => {
-    const currentPath = pathname; 
-
-    const isAuthRequiredPage = 
-      currentPath.startsWith('/cart') || 
-      currentPath.startsWith('/checkout') || 
-      currentPath.startsWith('/orders') ||
-      currentPath.startsWith('/success') || 
-      currentPath.startsWith('/cancel');
-
-    if (isAuthRequiredPage) {
-      const verifySessionOnNavigate = async () => {
-        try {
-          console.log(`💡 ${currentPath} への遷移を検知。セッションの先制チェックを行います...`);
-          await secureFetch(`${apiUrl}/api/auth/user/`, fetchOptions('GET'));
-        } catch (error: any) {
-          if (error.message === "Unauthorized session") {
-            console.log("遷移時の先制チェック：タイムアウトを安全にハンドルしました。");
-          } else {
-            console.error("Navigation session verification failed:", error);
-          }
-        }
-      };
-      verifySessionOnNavigate();
-    }
-  }, [pathname, secureFetch, fetchOptions, apiUrl]);
-
   // 2. ログイン
   const loginUser = useCallback(async (email: string, password: string): Promise<void> => {
     try {
