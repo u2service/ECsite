@@ -45,6 +45,25 @@ async function getSpecDefinitions(categoryId: number): Promise<SpecDefinition[]>
 }
 
 // ==========================================
+// 🚀 【追加】動的メタデータ生成関数
+// ==========================================
+export async function generateMetadata({ params }: PageProps) {
+  const { id } = await params;
+  const product = await getProduct(id);
+  
+  if (!product) {
+    return {
+      title: '商品が見つかりません',
+    };
+  }
+
+  return {
+    title: `${product.name} | My EC Store`, // 検索結果に表示されるタイトル
+    description: product.description ? `${product.description.slice(0, 100)}...` : `${product.name}の詳細ページです。`, // 検索結果の概要説明
+  };
+}
+
+// ==========================================
 // 📄 メインページコンポーネント
 // ==========================================
 export default async function ProductPage({ params }: PageProps): Promise<React.ReactElement> {
