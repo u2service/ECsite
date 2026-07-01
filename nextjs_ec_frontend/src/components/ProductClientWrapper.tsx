@@ -111,7 +111,7 @@ export default function ProductClientWrapper({ product }: ProductClientWrapperPr
       {/* 右側：商品情報・ボタン */}
       <div className="flex flex-col justify-center">
         {/* ブランド名 */}
-        {product.brand && typeof product.brand === 'object' && (
+        {product.brand?.name && (
           <p className="text-sm font-medium text-blue-600 mb-1 uppercase tracking-wider">
             {product.brand.name}
           </p>
