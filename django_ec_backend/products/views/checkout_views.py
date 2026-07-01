@@ -130,6 +130,8 @@ class CreateCheckoutSessionView(APIView):
                 shipping_address_collection={'allowed_countries': ['JP']},
                 billing_address_collection='required',
                 phone_number_collection={'enabled': True},
+                # 【ここを追加】注文IDなどをベースにしたユニークな文字列を渡す
+                idempotency_key=f"checkout_order_{order.id}"
             )
             order.stripe_checkout_session_id = checkout_session.id
             order.save()
