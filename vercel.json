@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "django_ec_backend/backend/wsgi.py",
+      "use": "@vercel/python",
+      "config": { "maxDuration": 15 }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "django_ec_backend/backend/wsgi.py"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "django_ec_backend/backend/wsgi.py"
+    },
+    {
+      "source": "/static/:path*",
+      "destination": "django_ec_backend/backend/wsgi.py"
+    },
+    {
+      "source": "/media/:path*",
+      "destination": "django_ec_backend/media/:path*"
+    }
+  ]
+}
