@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "updates": ["nextjs_ec_frontend"],
   "rewrites": [
     {
       "source": "/api/:path*",
