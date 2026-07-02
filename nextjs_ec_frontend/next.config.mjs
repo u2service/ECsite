@@ -22,11 +22,10 @@ const nextConfig = {
      ],
   },
 
-  // ▼ ここからリライトの設定を追記 ▼
+  // ▼ リライトの設定を環境（開発・本番）に合わせて自動切り替え ▼
   async rewrites() {
-    // 開発環境（ローカル）のときだけ、後ろにいるDjango（8000番）に飛ばす
+    // 【A】開発環境（ローカル）のとき
     if (process.env.NODE_ENV === 'development') {
-
       return [
         {
           source: "/api/:path*",
@@ -36,7 +35,7 @@ const nextConfig = {
           source: "/admin/:path*",
           destination: "http://127.0.0.1:8000/admin/:path*",
         },
-                // 追加：メディアファイルの転送設定
+        // メディアファイルの転送設定
         {
           source: "/media/:path*",
           destination: "http://127.0.0.1:8000/media/:path*",
@@ -44,9 +43,26 @@ const nextConfig = {
       ];
     }
     
-    // 本番環境（Vercel）では、vercel.jsonのルーティングが優先されるため、
-    // Next.js側のリライトは空（何も転送しない）で正常に動作します。
-    return [];
+    // 【B】本番環境（Vercel）のとき
+    // Vercelが外側のルーティングを無視する仕様に対応するため、Next.js自身がDjango（wsgi.py）へ中継します。
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://e-csite-neon.vercel.app/django_ec_backend/backend/wsgi.py/api/:path*",
+      },
+      {
+        source: "/admin/:path*",
+        destination: "https://e-csite-neon.vercel.app/django_ec_backend/backend/wsgi.py/admin/:path*",
+      },
+      {
+        source: "/static/:path*",
+        destination: "https://e-csite-neon.vercel.app/django_ec_backend/backend/wsgi.py/static/:path*",
+      },
+      {
+        source: "/media/:path*",
+        destination: "https://e-csite-neon.vercel.app/django_ec_backend/media/:path*",
+      },
+    ];
   },
 };
 
