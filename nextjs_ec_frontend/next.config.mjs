@@ -3,7 +3,6 @@ const nextConfig = {
   trailingSlash: true,
   
   images: {
-    // 開発環境では画像の最適化（リサイズ等）を無効化する
     unoptimized: process.env.NODE_ENV === 'development',
      remotePatterns: [
        {
@@ -12,7 +11,6 @@ const nextConfig = {
          port: '8000',
          pathname: '/media/**',
        },
-       // 本番環境のURLがある場合はここに追加
        {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
@@ -22,7 +20,7 @@ const nextConfig = {
      ],
   },
 
-  // ▼ リライトの設定を環境（開発・本番）に合わせて自動切り替え ▼
+  // ▼ 本番環境の通信先を wsgi.py 直接指定から正しいパス構成に変更 ▼
   async rewrites() {
     // 【A】開発環境（ローカル）のとき
     if (process.env.NODE_ENV === 'development') {
@@ -35,7 +33,6 @@ const nextConfig = {
           source: "/admin/:path*",
           destination: "http://127.0.0.1:8000/admin/:path*",
         },
-        // メディアファイルの転送設定
         {
           source: "/media/:path*",
           destination: "http://127.0.0.1:8000/media/:path*",
@@ -44,19 +41,19 @@ const nextConfig = {
     }
     
     // 【B】本番環境（Vercel）のとき
-    // Vercelが外側のルーティングを無視する仕様に対応するため、Next.js自身がDjango（wsgi.py）へ中継します。
+    // wsgi.py というファイル名を含めず、プロジェクトルートからのフォルダ構造でリライトします。
     return [
       {
         source: "/api/:path*",
-        destination: "https://e-csite-neon.vercel.app/django_ec_backend/backend/wsgi.py/api/:path*",
+        destination: "https://e-csite-neon.vercel.app/django_ec_backend/api/:path*",
       },
       {
         source: "/admin/:path*",
-        destination: "https://e-csite-neon.vercel.app/django_ec_backend/backend/wsgi.py/admin/:path*",
+        destination: "https://e-csite-neon.vercel.app/django_ec_backend/admin/:path*",
       },
       {
         source: "/static/:path*",
-        destination: "https://e-csite-neon.vercel.app/django_ec_backend/backend/wsgi.py/static/:path*",
+        destination: "https://e-csite-neon.vercel.app/django_ec_backend/static/:path*",
       },
       {
         source: "/media/:path*",
