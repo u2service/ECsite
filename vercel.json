@@ -11,22 +11,26 @@
       "config": { "maxDuration": 15 }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "django_ec_backend/backend/wsgi.py"
+      "src": "/api/(.*)",
+      "dest": "django_ec_backend/backend/wsgi.py"
     },
     {
-      "source": "/admin/:path*",
-      "destination": "django_ec_backend/backend/wsgi.py"
+      "src": "/admin/(.*)",
+      "dest": "django_ec_backend/backend/wsgi.py"
     },
     {
-      "source": "/static/:path*",
-      "destination": "django_ec_backend/backend/wsgi.py"
+      "src": "/static/(.*)",
+      "dest": "django_ec_backend/backend/wsgi.py"
     },
     {
-      "source": "/media/:path*",
-      "destination": "django_ec_backend/media/:path*"
+      "src": "/media/(.*)",
+      "dest": "django_ec_backend/media/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "nextjs_ec_frontend/package.json"
     }
   ]
 }

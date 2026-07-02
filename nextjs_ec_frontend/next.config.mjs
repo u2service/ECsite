@@ -21,7 +21,7 @@ const nextConfig = {
   },
 
   async rewrites() {
-    // 【A】開発環境（ローカル）のとき
+    // 開発環境（ローカル）のときだけ機能させる
     if (process.env.NODE_ENV === 'development') {
       return [
         {
@@ -39,27 +39,8 @@ const nextConfig = {
       ];
     }
     
-    // 【B】本番環境（Vercel）のとき
-    // ドメイン名を排除し、Vercelがビルドした実際のDjango配置パスへ直接マッピングします。
-    // これにより、Next.js自体の無限ループ条件から脱出させます。
-    return [
-      {
-        source: "/api/:path*",
-        destination: "/django_ec_backend/backend/wsgi.py/api/:path*",
-      },
-      {
-        source: "/admin/:path*",
-        destination: "/django_ec_backend/backend/wsgi.py/admin/:path*",
-      },
-      {
-        source: "/static/:path*",
-        destination: "/django_ec_backend/backend/wsgi.py/static/:path*",
-      },
-      {
-        source: "/media/:path*",
-        destination: "/django_ec_backend/media/:path*",
-      },
-    ];
+    // 本番（Vercel）は vercel.json 側でルーティングするため、ここは空にする
+    return [];
   },
 };
 
