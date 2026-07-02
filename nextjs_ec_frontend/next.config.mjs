@@ -3,6 +3,7 @@ const nextConfig = {
   trailingSlash: true,
   
   images: {
+    // 開発環境では画像の最適化（リサイズ等）を無効化する
     unoptimized: process.env.NODE_ENV === 'development',
      remotePatterns: [
        {
@@ -20,9 +21,8 @@ const nextConfig = {
      ],
   },
 
-  // ▼ 本番環境の通信先を wsgi.py 直接指定から正しいパス構成に変更 ▼
   async rewrites() {
-    // 【A】開発環境（ローカル）のとき
+    // 開発環境（ローカル）のときだけ、後ろにいるDjango（8000番）に飛ばす
     if (process.env.NODE_ENV === 'development') {
       return [
         {
@@ -40,26 +40,7 @@ const nextConfig = {
       ];
     }
     
-    // 【B】本番環境（Vercel）のとき
-    // wsgi.py というファイル名を含めず、プロジェクトルートからのフォルダ構造でリライトします。
-    return [
-      {
-        source: "/api/:path*",
-        destination: "https://e-csite-neon.vercel.app/django_ec_backend/api/:path*",
-      },
-      {
-        source: "/admin/:path*",
-        destination: "https://e-csite-neon.vercel.app/django_ec_backend/admin/:path*",
-      },
-      {
-        source: "/static/:path*",
-        destination: "https://e-csite-neon.vercel.app/django_ec_backend/static/:path*",
-      },
-      {
-        source: "/media/:path*",
-        destination: "https://e-csite-neon.vercel.app/django_ec_backend/media/:path*",
-      },
-    ];
+    return [];
   },
 };
 
