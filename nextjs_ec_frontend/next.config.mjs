@@ -20,7 +20,6 @@ const nextConfig = {
      ],
   },
 
-  // ▼ Next.jsの横取りを回避し、Vercel内部のDjango関数へ直接プロキシする ▼
   async rewrites() {
     // 【A】開発環境（ローカル）のとき
     if (process.env.NODE_ENV === 'development') {
@@ -41,23 +40,24 @@ const nextConfig = {
     }
     
     // 【B】本番環境（Vercel）のとき
-    // VercelがビルドしたDjangoのServerless Functionの内部ルートを直撃させます。
+    // ドメイン名を排除し、Vercelがビルドした実際のDjango配置パスへ直接マッピングします。
+    // これにより、Next.js自体の無限ループ条件から脱出させます。
     return [
       {
         source: "/api/:path*",
-        destination: "https://e-csite-neon.vercel.app/api/django_ec_backend/backend/wsgi.py/:path*",
+        destination: "/django_ec_backend/backend/wsgi.py/api/:path*",
       },
       {
         source: "/admin/:path*",
-        destination: "https://e-csite-neon.vercel.app/api/django_ec_backend/backend/wsgi.py/:path*",
+        destination: "/django_ec_backend/backend/wsgi.py/admin/:path*",
       },
       {
         source: "/static/:path*",
-        destination: "https://e-csite-neon.vercel.app/api/django_ec_backend/backend/wsgi.py/:path*",
+        destination: "/django_ec_backend/backend/wsgi.py/static/:path*",
       },
       {
         source: "/media/:path*",
-        destination: "https://e-csite-neon.vercel.app/api/django_ec_backend/backend/wsgi.py/:path*",
+        destination: "/django_ec_backend/media/:path*",
       },
     ];
   },
