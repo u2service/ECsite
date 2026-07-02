@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 // 💡 先ほど作成した CommentItem から Comment 型定義をインポート
 import CommentItem, { Comment } from './CommentItem';
+import { toast } from 'sonner';
 
 // ==========================================
 // 💡 型定義（Interfaces）
@@ -74,7 +75,7 @@ export default function CommentSection({ productId }: CommentSectionProps): Reac
 
       // 💡 2. タイムアウト（認証切れ: 401 Unauthorized / 403 Forbidden）の場合
       if (res.status === 401 || res.status === 403) {
-        alert("タイムアウトしたので投稿できません。再度ログインしてください。");
+        toast.error("タイムアウトしたので投稿できません。再度ログインしてください。")
         
         // 💡 判別したログアウト関数を実行する（どちらもなければ最終手段でリロード）
         if (typeof logoutFunction === 'function') {
@@ -87,11 +88,11 @@ export default function CommentSection({ productId }: CommentSectionProps): Reac
       }
 
       // 💡 3. その他のエラー（500や400バッドリクエストなど）
-      alert(`コメントの投稿に失敗しました。(Status: ${res.status})`);
+      toast.error(`コメントの投稿に失敗しました。(Status: ${res.status})`)
 
     } catch (error) {
       console.error("Submit error:", error);
-      alert("通信エラーが発生しました。");
+      toast.error("通信エラーが発生しました。")
     } finally {
       setIsSubmitting(false);
     }

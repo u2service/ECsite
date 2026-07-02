@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 // ==========================================
 // 💡 型定義（Interfaces）
@@ -43,7 +44,7 @@ export default function CommentItem({ comment, onVoteUpdate }: CommentItemProps)
   // 💡 引数の型を VoteType に縛ることでタイポを完全に防止
   const handleVote = async (voteType: VoteType) => {
     if (!user) {
-      alert("投票するにはログインが必要です");
+      toast("投票するにはログインが必要です")
       return;
     }
     if (isVoting) return;

@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { toast } from 'sonner';
 
 // 💡 1. ユーザーオブジェクトの型定義
 export interface User {
@@ -106,7 +107,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
       destinationPath.startsWith('/orders');     // ✨ 追加
     
     if (isAuthRequiredPage) {
-      alert("タイムアウトによりログアウトされました。");
+      toast("タイムアウトによりログアウトされました。")
       setUser(null);
       router.push('/');
     } else {
@@ -176,7 +177,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
         router.push('/');
       } else {
         const errorData = await res.json();
-        alert(errorData.non_field_errors || "ログインに失敗しました。");
+        toast.error(errorData.non_field_errors || "ログインに失敗しました。")
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -210,7 +211,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
       } else {
         const errorData = await res.json();
         console.error('登録失敗:', errorData);
-        alert('登録に失敗しました。');
+        toast.error('登録に失敗しました。')
       }
     } catch (error) {
       console.error('登録エラー:', error);

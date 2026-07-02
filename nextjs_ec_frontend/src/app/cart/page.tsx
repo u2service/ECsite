@@ -9,6 +9,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { getFullImageUrl } from '@/utils/image';
 // 💡 自動生成されたスキーマから必要な型をピンポイントで抽出
 import { paths } from '@/types/schema';
+import { toast } from 'sonner';
 
 // ① カートAPIのGETレスポンスから「カートアイテム」の型を抽出
 // 💡 修正後：末尾に [number] を1つ追加して、配列の中身を指すようにします
@@ -101,7 +102,7 @@ export default function CartPage() {
   
   const handleCheckout = async () => {
     if (!selectedPrefecture) {
-      alert("配送先の都道府県を選択してください。");
+      toast("配送先の都道府県を選択してください。")
       return;
     }
 
@@ -118,14 +119,14 @@ export default function CartPage() {
           window.location.href = session.url;
         } else {
           console.error('Stripe Checkout URLがバックエンドから提供されていません。', session);
-          alert('決済処理を開始できませんでした。');
+          toast.error('決済処理を開始できませんでした。')
         }
       } else {
         console.error('Checkout Sessionの作成に失敗:', session);
         // 💡 sessionに特定の型を付けたため、anyにキャストして安全にエラー文字列化を許可
         const errorMessage = (session as any)?.error || (session as any)?.detail || JSON.stringify(session);
         console.error('詳細:', errorMessage);
-        alert(`決済処理を開始できませんでした。詳細: ${errorMessage}`);
+        toast.error(`決済処理を開始できませんでした。詳細: ${errorMessage}`)
       }
     } catch (error) {
       console.error('決済処理エラー:', error);

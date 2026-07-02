@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next'; // 💡 Metadata の型をインポート
 import "./globals.css";
+import { Toaster } from 'sonner';
 import Header from '@/components/Header';
 import CategorySidebar from '@/components/CategorySidebar';
 import { AuthProvider } from '@/context/AuthContext';
@@ -60,6 +61,8 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
         
         {/* プライバシーコンプライアンス（Cookie同意バナー） */}
         <CookieConsentBanner />
+
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );

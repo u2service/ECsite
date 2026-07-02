@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from './AuthContext'; // ログイン状態を取得するために使用
+import { toast } from 'sonner';
 
 // ==========================================
 // 💡 カート構造の型定義
@@ -101,7 +102,7 @@ export const CartProvider = ({ children }: CartProviderProps): React.ReactElemen
   // カートに商品を追加する関数
   const addItemToCart = useCallback(async (productId: number, quantity: number): Promise<void> => {
     if (!user) {
-      alert("ログインしてください。");
+      toast("ログインしてください。")
       return;
     }
     try {
@@ -112,11 +113,11 @@ export const CartProvider = ({ children }: CartProviderProps): React.ReactElemen
       if (res.ok) {
         const data: Cart = await res.json();
         setCart(data); // サーバーからの最新のカート情報で更新
-        alert("カートに商品を追加しました。");
+        toast("カートに商品を追加しました。")
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error("カート追加失敗:", res.status, errorData);
-        alert(`カートへの追加に失敗しました。 (Error: ${res.status})`);
+        toast.error(`カートへの追加に失敗しました。 (Error: ${res.status})`)
       }
     } catch (error) {
       console.error("Error adding item to cart:", error);
@@ -131,7 +132,7 @@ export const CartProvider = ({ children }: CartProviderProps): React.ReactElemen
         // 削除成功後、カート情報を再取得して更新
         fetchCart();
       } else {
-        alert("商品の削除に失敗しました。");
+        toast.error("商品の削除に失敗しました。")
       }
     } catch (error) {
       console.error("Error removing item:", error);
@@ -153,7 +154,7 @@ export const CartProvider = ({ children }: CartProviderProps): React.ReactElemen
         // 更新成功後、カート情報を再取得して更新
         fetchCart();
       } else {
-        alert("数量の更新に失敗しました。");
+        toast.error("数量の更新に失敗しました。")
       }
     } catch (error) {
       console.error("Error updating quantity:", error);
