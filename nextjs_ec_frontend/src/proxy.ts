@@ -12,7 +12,7 @@ export const config = {
   ],
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // 💡 確認していただいたCookiesの中から 'access_token' を取得します
   const accessToken = request.cookies.get('access_token')?.value
 
