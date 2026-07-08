@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-// 💡 ログイン必須にしたいページ（AuthContext内にあった対象ページ）
+// 💡 ログイン必須にしたいページ（認証ガードの対象パス）
 export const config = {
   matcher: [
     '/cart/:path*',
@@ -13,7 +13,15 @@ export const config = {
 }
 
 export function proxy(request: NextRequest) {
-  // 💡 確認していただいたCookiesの中から 'access_token' を取得します
+  // ─── ▼ 追加：例外ルート（ログイン不要）の判定 ▼ ───
+  // 現在アクセスしようとしているパスが `/checkout/cancel` の場合は、
+  // トークンの有無に関わらず、即座にスルー（NextResponse.next）させます。
+  if (request.nextUrl.pathname === '/checkout/cancel') {
+    return NextResponse.next()
+  }
+  // ─── ▲ ここまで ▲ ───
+
+  // 💡 クッキーの中から 'access_token' を取得します
   const accessToken = request.cookies.get('access_token')?.value
 
   // アクセストークンがなければ、フロントの画面（HTML/JS）を描画する前に即座に弾く

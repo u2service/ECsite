@@ -62,10 +62,18 @@ class OrderItemInline(admin.TabularInline):
 # 注文本体の設定
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'full_name', 'email', 'phone', 'total_amount', 'status', 'created_at')
-    # 詳細画面で住所などを見やすく表示（fields または fieldsets を使用）
-    readonly_fields = ('stripe_checkout_session_id',)
-    list_filter = ('status', 'created_at') # ステータスや日付で絞り込み
+    # 1. 一覧画面に 'status' と 'reserved_until' を追加
+    list_display = (
+        'id', 'full_name', 'email', 'phone', 
+        'total_amount', 'status', 'reserved_until', 'created_at'
+        )
+    
+    # 2. 詳細画面で住所などを見やすく表示（fields または fieldsets を使用）
+    readonly_fields = ('stripe_checkout_session_id', 'reserved_until',)
+
+    # 3. フィルター項目に 'reserved_until' を追加（仮押さえ状況の追跡用）
+    list_filter = ('status', 'created_at', 'reserved_until') 
+
     inlines = [OrderItemInline]
     search_fields = ('id', 'full_name', 'email', 'user__username', 'phone') # 検索機能の強化
 
@@ -78,10 +86,21 @@ class ProductImageInline(admin.TabularInline):
 # decorator を使っている場合はそこを修正します。
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'category', 'brand', 'price', 'stock')
+    # 1. 一覧画面に 'display_available_stock'（有効在庫数）を追加
+    list_display = (
+        'id', 'name', 'category', 'brand', 'price', 
+        'stock', 'display_available_stock'
+        )
     list_filter = ('category', 'brand')
     inlines = [ProductImageInline]
     search_fields = ('name',)
+
+    readonly_fields = ('display_available_stock',)
+
+    # 2. モデルの@property（有効在庫）を日本語の列名で表示するためのカスタム関数を追加
+    def display_available_stock(self, obj):
+        return obj.available_stock
+    display_available_stock.short_description = "有効在庫数(仮押さえ考慮)"
 
     class Media:
         # static/ 以下のパスを記述します

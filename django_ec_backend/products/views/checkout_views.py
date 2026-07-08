@@ -7,6 +7,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone  # 追加：時間計算用
+from datetime import timedelta     # 追加：30分後を計算するため
 from rest_framework import permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -21,27 +23,19 @@ class CreateCheckoutSessionView(APIView):
     throttle_scope = 'burst'
 
     @extend_schema(
-        request=None,  # フロントから送られてくるボディデータは空（リクエストのみ）
+        request=None,
         responses={
             200: {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string", 
-                        "description": "StripeのチェックアウトセッションID"
-                    },
-                    "url": {
-                        "type": "string", 
-                        "description": "Next.jsがリダイレクトするためのStripe決済ページのURL"
-                    }
+                    "id": {"type": "string", "description": "StripeのチェックアウトセッションID"},
+                    "url": {"type": "string", "description": "Next.jsがリダイレクトするためのStripe決済ページのURL"}
                 }
             }
         },
-        description="ログインユーザーのカート情報をもとに、Stripeのチェックアウトセッションを作成し、セッションIDと決済URLを返します。"
+        description="ログインユーザーのカート情報をもとに、Stripeのチェックアウトセッションを作成し、在庫を30分間仮押さえします。"
     )
-
     def post(self, request, *args, **kwargs):
-        # 1. フロントエンドから都道府県を取得
         prefecture = request.data.get('prefecture')
         if not prefecture:
             return Response({'error': '都道府県を選択してください。'}, status=status.HTTP_400_BAD_REQUEST)
@@ -53,37 +47,43 @@ class CreateCheckoutSessionView(APIView):
         except Cart.DoesNotExist:
             return Response({'error': 'カートが見つかりません'}, status=status.HTTP_404_NOT_FOUND)
 
-        # 在庫チェック
-        for item in cart.items.all():
-            if item.product.stock < item.quantity:
-                return Response(
-                    {'error': f'申し訳ありません。{item.product.name} の在庫が不足しています（残り{item.product.stock}個）。'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        # 【改修1】有効在庫チェック (available_stock を確認し、競合を防ぐためにデータベース行をロック)
+        with transaction.atomic():
+            for item in cart.items.all():
+                # 競合を防ぐため、対象のProductレコードにロックをかける
+                product = Product.objects.select_for_update().get(id=item.product.id)
+                if product.available_stock < item.quantity:
+                    return Response(
+                        {'error': f'申し訳ありません。{product.name} は現在別のお客様が手続き中、または在庫不足です（購入可能数: {product.available_stock}個）。'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
-        # 2. 送料の計算 (バックエンド側で再度計算して整合性を保つ)
+        # 送料の計算
         shipping_total = 0
         for item in cart.items.all():
             try:
                 postage = Postage.objects.get(prefecture=prefecture, size=item.product.shipping_size)
                 shipping_total += postage.cost * item.quantity
             except Postage.DoesNotExist:
-                # 送料設定が見つからない場合のフォールバック（またはエラー）
                 return Response({'error': f'{prefecture}への送料設定が見つかりません。'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 3. 商品合計と最終合計（商品合計 + 送料）の算出
+        # 金額算出
         items_total = sum(item.product.price * item.quantity for item in cart.items.all())
         grand_total = items_total + shipping_total
 
-        # 4. Orderオブジェクトの作成（shipping_costを保存）
+        # 【改修2】Orderオブジェクトの作成（仮押さえステータスと、30分後の有効期限をセット）
+        now = timezone.now()
+        reservation_deadline = now + timedelta(minutes=30)
+
         order = Order.objects.create(
             user=request.user,
-            total_amount=grand_total,    # 総支払額
-            shipping_cost=shipping_total, # 送料合計
+            total_amount=grand_total,
+            shipping_cost=shipping_total,
             full_name='',
             email=request.user.email,
             shipping_address='',
-            status='pending'
+            status='pending_reservation', # 'pending' から 'pending_reservation' に変更
+            reserved_until=reservation_deadline # 仮押さえ有効期限を保存
         )
         for item in cart.items.all():
             OrderItem.objects.create(
@@ -93,7 +93,7 @@ class CreateCheckoutSessionView(APIView):
                 price=item.product.price
             )
 
-        # 5. Stripe用のline_items作成
+        # Stripe用のline_items作成
         line_items = []
         for item in cart.items.all():
             line_items.append({
@@ -105,7 +105,6 @@ class CreateCheckoutSessionView(APIView):
                 'quantity': item.quantity,
             })
         
-        # 6. 送料をStripeの決済項目に追加
         if shipping_total > 0:
             line_items.append({
                 'price_data': {
@@ -119,19 +118,23 @@ class CreateCheckoutSessionView(APIView):
         frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
         stripe.api_key = settings.STRIPE_SECRET_KEY
         try:
+            # 【改修3】Stripeのセッション作成パラメータ変更（有効期限の設定）
+            # Stripeの制限上、expires_at は「今から30分以上、24時間以内」のUnixタイムスタンプである必要があります
+            stripe_expires_at = int(reservation_deadline.timestamp())
+
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=line_items,
                 mode='payment',
                 success_url=f'{frontend_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}',
-                cancel_url=f'{frontend_url}/checkout/cancel',
+                cancel_url=f'{frontend_url}/checkout/cancel?session_id={{CHECKOUT_SESSION_ID}}', # 後方互換・追跡用にパラメータ付与
                 customer_email=request.user.email,
                 metadata={'order_id': order.id},
                 shipping_address_collection={'allowed_countries': ['JP']},
                 billing_address_collection='required',
                 phone_number_collection={'enabled': True},
-                # 【ここを追加】注文IDなどをベースにしたユニークな文字列を渡す
-                idempotency_key=f"checkout_order_{order.id}"
+                idempotency_key=f"checkout_order_{order.id}",
+                expires_at=stripe_expires_at, # Stripe自体も30分で自動失効させる設定を追加！
             )
             order.stripe_checkout_session_id = checkout_session.id
             order.save()
@@ -140,14 +143,14 @@ class CreateCheckoutSessionView(APIView):
             order.delete()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 @method_decorator(csrf_exempt, name='dispatch')
 class StripeWebhookView(APIView):
     @extend_schema(
         request=None, 
         responses={200: None},
-        description="Stripeからの支払い完了イベント等の通知（Webhook）を受け取り、注文ステータスを更新します。"
+        description="Stripeからの支払い完了、および失効通知（Webhook）を受け取り、注文ステータスを更新します。"
     )
-    
     def post(self, request, *args, **kwargs):
         payload = request.body
         sig_header = request.META['HTTP_STRIPE_SIGNATURE']
@@ -159,21 +162,27 @@ class StripeWebhookView(APIView):
         except (ValueError, stripe.error.SignatureVerificationError) as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+        # イベント判定
         if event['type'] == 'checkout.session.completed':
             session = event['data']['object']
             self.handle_checkout_session_completed(session)
+            
+        # 【改修4】30分経過時の失効イベントを検知する
+        elif event['type'] == 'checkout.session.expired':
+            session = event['data']['object']
+            self.handle_checkout_session_expired(session)
 
         return Response(status=status.HTTP_200_OK)
 
     def handle_checkout_session_completed(self, session):
-        # session (StripeObject) を通常の辞書に変換します
         session_dict = session.to_dict()
         session_id = session_dict['id']
         customer_email = session_dict.get('customer_details', {}).get('email')
 
         try:
             order = Order.objects.get(stripe_checkout_session_id=session_id)
-            if order.status == 'pending':
+            # 条件変更: 既存の 'pending' ではなく 'pending_reservation' であることをチェック
+            if order.status == 'pending_reservation':
                 self.fulfill_order(order)
                 if session_dict.get('customer_details'):
                     customer_info = session_dict['customer_details']
@@ -200,20 +209,18 @@ class StripeWebhookView(APIView):
         except Exception as e:
             print(f"Error processing order: {e}")
 
-    def _format_address(self, customer_info):
-        address = customer_info.get('address')
-        if not address: return ""
-        parts = [address.get(k) for k in ['state', 'city', 'line1', 'line2', 'postal_code', 'country'] if address.get(k)]
-        return ", ".join(parts)
-
-    def _notify_staff(self, order):
-        subject = f"【新規注文通知】注文ID: {order.id}"
-        message = f"新しい注文がありました。\n注文ID: {order.id}\n顧客名: {order.full_name}\n金額: {order.total_amount} 円\nステータス: {order.status}"
-        User = get_user_model()
-        staff_emails = list(User.objects.filter(is_staff=True, is_active=True).values_list('email', flat=True))
-        recipient_list = [email for email in staff_emails if email]
-        if recipient_list:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list)
+    # 【新設】30分経ってStripe側が自動失効したときに動くロジック
+    def handle_checkout_session_expired(self, session):
+        session_dict = session.to_dict()
+        session_id = session_dict['id']
+        try:
+            order = Order.objects.get(stripe_checkout_session_id=session_id)
+            if order.status == 'pending_reservation':
+                order.status = 'expired'  # 期限切れに変更
+                order.save()
+                print(f"Order {order.id} has expired and stock reservation released.")
+        except Order.DoesNotExist:
+            pass
 
     def fulfill_order(self, order):
         try:
@@ -230,3 +237,68 @@ class StripeWebhookView(APIView):
                 order.save()
         except Exception as e:
             raise e
+
+    def _format_address(self, customer_info):
+        address = customer_info.get('address')
+        if not address: return ""
+        parts = [address.get(k) for k in ['state', 'city', 'line1', 'line2', 'postal_code', 'country'] if address.get(k)]
+        return ", ".join(parts)
+
+    def _notify_staff(self, order):
+        subject = f"【新規注文通知】注文ID: {order.id}"
+        message = f"新しい注文がありました。\n注文ID: {order.id}\n顧客名: {order.full_name}\n金額: {order.total_amount} 円\nステータス: {order.status}"
+        User = get_user_model()
+        staff_emails = list(User.objects.filter(is_staff=True, is_active=True).values_list('email', flat=True))
+        recipient_list = [email for email in staff_emails if email]
+        if recipient_list:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list)
+
+# --- ▼ 既存のコードの一番下に追加 ▼ ---
+
+class CheckoutStatusView(APIView):
+    """
+    【新設】認証不要のステータス・在庫確認API
+    Next.jsのキャンセル画面から、Stripeのsession_idを元に現在の状態を問い合わせます。
+    """
+    permission_classes = [permissions.AllowAny] # ★重要：認証不要（ログインしていなくても叩ける）
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'burst'
+
+    @extend_schema(
+        parameters=[
+            {
+                "name": "session_id",
+                "type": "string",
+                "required": True,
+                "description": "StripeのチェックアウトセッションID"
+            }
+        ],
+        responses={200: {"type": "object"}},
+        description="ストライプのセッションIDを元に、注文が失効しているかと、その商品の最新の有効在庫があるかを返します（認証不要）。"
+    )
+    def get(self, request, *args, **kwargs):
+        session_id = request.query_params.get('session_id')
+        if not session_id:
+            return Response({'error': 'session_idは必須です。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # セッションIDから対象の注文を取得
+            order = Order.objects.get(stripe_checkout_session_id=session_id)
+            
+            # 今回の注文に含まれる「最初の商品」を取得（1点物のECを想定）
+            # 複数商品がある場合は、全てのhas_stockがTrueかを判定するロジックに変えることも可能です
+            order_item = order.items.first()
+            has_stock = False
+            
+            if order_item and order_item.product:
+                # モデルに作ったバーチャルな有効在庫ロジック（available_stock）を利用
+                has_stock = order_item.product.available_stock >= order_item.quantity
+
+            return Response({
+                'status': order.status, # 'expired', 'pending_reservation', 'paid' などが返る
+                'has_stock': has_stock  # 有効在庫が残っていれば True、売り切れていれば False
+            }, status=status.HTTP_200_OK)
+
+        except Order.DoesNotExist:
+            return Response({'error': '対象の注文が見つかりません。'}, status=status.HTTP_404_NOT_FOUND)
+        

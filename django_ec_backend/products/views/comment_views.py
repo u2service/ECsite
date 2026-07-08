@@ -28,6 +28,11 @@ class CommentViewSet(viewsets.ModelViewSet):
                 ng_count_annotated=Count('votes', filter=Q(votes__vote_type='ng'))
             )
         
+        # ─── ✨ 修正：投票(vote)アクションの時は、商品IDの絞り込みをスキップする ───
+        if self.action == 'vote':
+            return queryset
+        # ───────────────────────────────────────────────────────────────────
+        
         # 2. 【重要】リクエストから product_id を取得してフィルタリング
         # クエリパラメータ（?product_id=X）から取る場合
         product_id = self.request.query_params.get('product_id')

@@ -67,6 +67,24 @@ class Product(models.Model):
         verbose_name="配送サイズ"
     )
 
+    # --- ▼ ここから新設 ▼ ---
+    @property
+    def available_stock(self):
+        """
+        有効在庫数 = 物理在庫数(stock) - 有効な仮押さえ数
+        """
+        # この商品を含み、かつ現在「仮押さえ中」で「期限が未来」のOrderItemの総数量をカウント
+        # OrderItem経由で親のOrderの状態を見に行きます
+        active_reservations = OrderItem.objects.filter(
+            product=self,
+            order__status='pending_reservation',
+            order__reserved_until__gt=timezone.now()
+        ).aggregate(models.Sum('quantity'))['quantity__sum'] or 0
+        
+        # 物理在庫から仮押さえ分を引いた数を返す（0未満にならないよう制御）
+        return max(0, self.stock - active_reservations)
+    # --- ▲ ここまで新設 ▲ ---
+
     def __str__(self):
         return self.name if self.name else "Unnamed Product"
     
@@ -112,6 +130,9 @@ class Order(models.Model):
     注文モデル
     """
     ORDER_STATUS_CHOICES = [
+        ('pending_reservation', '仮押さえ中'), # Stripe遷移時
+        ('expired', '時間切れ失効'),           # 30分放置時
+
         ('pending', '未払い'),
         ('paid', '支払い済み'),
         ('shipped', '発送済み'),
@@ -127,8 +148,16 @@ class Order(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)       # 追加
     country = models.CharField(max_length=100, blank=True, null=True)   # 追加
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=10, choices=ORDER_STATUS_CHOICES, default='pending')
-    stripe_checkout_session_id = models.CharField(max_length=255, blank=True, null=True)
+
+    # 1. defaultを 'pending_reservation' に変更
+    status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending_reservation', db_index=True)
+    
+    # 既存のものをそのまま利用（検索高速化のために db_index=True を推奨）
+    stripe_checkout_session_id = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    
+    # 2. 仮押さえの有効期限（作成日時 + 30分）を追加
+    reserved_until = models.DateTimeField(null=True, blank=True, db_index=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="送料合計")
@@ -137,7 +166,7 @@ class Order(models.Model):
     def __str__(self):
         # userはSET_NULLなので、Guestや削除済みユーザーの場合を考慮（既存通り）
         username = self.user.username if self.user else 'Guest'
-        return f"Order {self.id} by {username}"
+        return f"Order {self.id} by {username} ({self.get_status_display()})"
 
 class OrderItem(models.Model):
     """
