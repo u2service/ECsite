@@ -100,7 +100,9 @@ export default function CommentSection({ productId }: CommentSectionProps): Reac
 
   // 投票結果を反映
   const handleVoteUpdate = (updatedComment: Comment): void => {
-    setComments(comments.map(c => c.id === updatedComment.id ? updatedComment : c));
+    setComments((prevComments) =>
+      prevComments.map((c) => (c.id === updatedComment.id ? updatedComment : c))
+    );
   };
 
   if (loading) return <div className="mt-8 text-center text-gray-500">コメントを読み込み中...</div>;

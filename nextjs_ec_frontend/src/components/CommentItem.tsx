@@ -28,9 +28,9 @@ type VoteType = 'good' | 'ng';
 // ==========================================
 // 📄 メインコンポーネント
 // ==========================================
-export default function CommentItem({ comment, onVoteUpdate }) {
+export default function CommentItem({ comment, onVoteUpdate }: CommentItemProps): React.ReactElement {
   const { user, fetchOptions } = useAuth();
-  const [isVoting, setIsVoting] = useState(false);
+  const [isVoting, setIsVoting] = useState<boolean>(false);
 
   // 日付のフォーマット (例: 2026/06/25 15:30)
   const formattedDate = new Date(comment.created_at).toLocaleString('ja-JP', {
@@ -42,9 +42,9 @@ export default function CommentItem({ comment, onVoteUpdate }) {
   });
 
   // 💡 引数の型を VoteType に縛ることでタイポを完全に防止
-  const handleVote = async (voteType) => {
+  const handleVote = async (voteType: VoteType): Promise<void> => {
     if (!user) {
-      toast("投票するにはログインが必要です")
+      toast.error("投票するにはログインが必要です");
       return;
     }
     if (isVoting) return;
@@ -57,13 +57,17 @@ export default function CommentItem({ comment, onVoteUpdate }) {
       );
 
       if (res.ok) {
-        const updatedComment = await res.json();
+        const updatedComment: Comment = await res.json();
+        console.log("APIから返ってきたデータ:", updatedComment); // 👈 ここで数値が増えているか確認！
+        // 💡 親コンポーネントの状態（State）を更新する
         onVoteUpdate(updatedComment);
       } else {
         console.error("Vote failed with status:", res.status);
+        toast.error(`投票の処理に失敗しました (Status: ${res.status})`);
       }
     } catch (error) {
       console.error("Vote error:", error);
+      toast.error("通信エラーが発生しました");
     } finally {
       setIsVoting(false);
     }
