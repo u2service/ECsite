@@ -4,3 +4,4 @@ from .cart_views import CartViewSet, CartItemViewSet
 from .checkout_views import CreateCheckoutSessionView, StripeWebhookView
 from .order_views import OrderViewSet
 from .comment_views import CommentViewSet
+from .checkout_views import CheckoutStatusView

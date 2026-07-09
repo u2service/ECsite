@@ -12,6 +12,7 @@ from .views import (
     CategorySpecView,
     CategorySpecValuesView,
     CommentViewSet,
+    CheckoutStatusView,
 )
 
 router = DefaultRouter()
@@ -29,6 +30,11 @@ urlpatterns = [
     path('', include(router.urls)),
     path('create-checkout-session/', CreateCheckoutSessionView.as_view(), name='create-checkout-session'),
     path('webhook/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'), # Webhook URLを追加
+
+    # 💡 2. 決済ステータス確認用のルーティングを追加
+    # ※ URLパターン（'checkout-status/' やパラメータ）は、フロントエンドや元の設計に合わせて調整してください
+    path('checkout-status/', CheckoutStatusView.as_view(), name='checkout-status'),
+
     # カテゴリごとのスペック定義を取得するエンドポイントを追加
     path('category-specs/<int:category_id>/', CategorySpecView.as_view(), name='category-specs'),
     # カテゴリごとの実際に存在するスペック値を取得するエンドポイントを追加（これを確認用やフロントで使用）
