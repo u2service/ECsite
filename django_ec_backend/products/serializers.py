@@ -193,9 +193,19 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_current_user_vote(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            vote = obj.votes.filter(user=request.user).first()
-            votes_list = getattr(obj, '_prefetched_objects_cache', {}).get('votes', obj.votes.all())
-            vote = next((v for v in votes_list if v.user_id == request.user.id), None)
+            # ビュー側で prefetch_related('votes') されている場合を考慮したキャッシュの取得
+            votes_list = getattr(obj, '_prefetched_objects_cache', {}).get('votes', None)
+            
+            if votes_list is not None:
+                # メモリ上のキャッシュから該当ユーザーの投票を探す（クエリが飛ばない）
+                vote = next((v for v in votes_list if v.user_id == request.user.id), None)
+            else:
+                # キャッシュがない場合はDBにクエリを飛ばして取得
+                vote = obj.votes.filter(user=request.user).first()
+            
+            # 投票データが存在すれば、そのタイプ（'good' / 'ng'）を返す
+            if vote:
+                return vote.vote_type
 
         return None
 
