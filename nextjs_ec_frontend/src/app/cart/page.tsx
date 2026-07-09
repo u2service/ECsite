@@ -10,9 +10,9 @@ import { getFullImageUrl } from '@/utils/image';
 // 💡 自動生成されたスキーマから必要な型をピンポイントで抽出
 import { paths } from '@/types/schema';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation'; // ✨ 【追加】ルーターのインポート
 
 // ① カートAPIのGETレスポンスから「カートアイテム」の型を抽出
-// 💡 修正後：末尾に [number] を1つ追加して、配列の中身を指すようにします
 type DjangoCart = paths['/api/cart/']['get']['responses']['200']['content']['application/json'][number];
 type DjangoCartItem = DjangoCart['items'][number];
 
@@ -23,7 +23,7 @@ type ShippingResponse = paths['/api/cart/calculate-shipping/']['get']['responses
 type CheckoutResponse = paths['/api/create-checkout-session/']['post']['responses']['200']['content']['application/json'];
 
 
-// Stripeの初期化（環境変数が空の場合は空文字を渡してエラーを防ぐ）
+// Stripeの初期化
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 // 都道府県リスト
@@ -38,24 +38,30 @@ const PREFECTURES = [
 ];
 
 export default function CartPage() {
-  // Context から取得する値の型を明示
+  // Context から取得する値
   const { cart, loading: cartLoading, removeItemFromCart, updateItemQuantity } = useCart() as any;
-  
-  // 💡 🌟 ここで重複を回避！ loading を `authLoading` という別名で受け取ります
-  // 💡 先制ガードで使用する `user` も一緒にしっかり受け取ります
   const { user, loading: authLoading, secureFetch, fetchOptions } = useAuth();
   
+  const router = useRouter(); // ✨ 【追加】ルーターの初期化
+
   const [selectedPrefecture, setSelectedPrefecture] = useState("");
   const [shippingTotal, setShippingTotal] = useState(0);
   const [isCalculating, setIsCalculating] = useState(false);
 
+  // ✨ 【追加】未ログインユーザーを自動的にリダイレクトさせる処理
+  useEffect(() => {
+    // 認証情報の確認が完了し（authLoadingがfalse）、かつユーザーが存在しない場合
+    if (!authLoading && !user) {
+      toast.error("カートを表示するにはログインが必要です。");
+      router.push('/login'); // 💡 実際のログインページのパスに合わせて調整してください
+    }
+  }, [user, authLoading, router]);
+
   // 都道府県が変更されたら送料を計算
   useEffect(() => {
-    // 重複リクエストをキャンセルするためのコントローラー
     const abortController = new AbortController();
 
     const fetchShipping = async () => {
-      // カート情報または都道府県が選択されていない場合は計算をスキップ
       if (!selectedPrefecture || !cart) {
         setShippingTotal(0);
         return;
@@ -67,24 +73,20 @@ export default function CartPage() {
           `${process.env.NEXT_PUBLIC_API_URL}/api/cart/calculate-shipping/?prefecture=${encodeURIComponent(selectedPrefecture)}`,
           {
             ...fetchOptions('GET'),
-            signal: abortController.signal // キャンセル用シグナルを渡す
+            signal: abortController.signal
           }
         );
         if (res.ok) {
-          // 💡 返ってくるJSONデータに型を適用（タイポを防ぐ）
           const data: ShippingResponse = await res.json();
           setShippingTotal(data.shipping_total);
-          } else {
-          // 401などのエラー時は警告をコンソールに出す（画面は壊さない）
+        } else {
           console.warn(`送料計算リクエストがステータス ${res.status} で返されました。`);
         }
       } catch (error: any) {
-        // キャンセルによるエラー（AbortError）は無視し、それ以外のエラーのみ記録
         if (error.name !== 'AbortError') {
           console.error('送料計算エラー:', error);
         }
       } finally {
-        // キャンセルされていない場合のみ、ローディング状態を解除
         if (!abortController.signal.aborted) {
           setIsCalculating(false);
         }
@@ -92,12 +94,9 @@ export default function CartPage() {
     };
 
     fetchShipping();
-    // クリーンアップ関数: 次の実行が走るかアンマウントされたら、実行中のリクエストをキャンセルする
     return () => {
       abortController.abort();
     };
-    
-    // 依存配列に JSON.stringify(cart?.items) を指定して、中身が変わった時だけ実行されるようにします
   }, [selectedPrefecture, JSON.stringify(cart?.items), fetchOptions, secureFetch]);
   
   const handleCheckout = async () => {
@@ -111,7 +110,6 @@ export default function CartPage() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/create-checkout-session/`,
         fetchOptions('POST', { prefecture: selectedPrefecture })
       );
-      // 💡 返ってくるJSONデータに型を適用
       const session: CheckoutResponse = await res.json();
 
       if (res.ok) {
@@ -123,7 +121,6 @@ export default function CartPage() {
         }
       } else {
         console.error('Checkout Sessionの作成に失敗:', session);
-        // 💡 sessionに特定の型を付けたため、anyにキャストして安全にエラー文字列化を許可
         const errorMessage = (session as any)?.error || (session as any)?.detail || JSON.stringify(session);
         console.error('詳細:', errorMessage);
         toast.error(`決済処理を開始できませんでした。詳細: ${errorMessage}`)
@@ -133,14 +130,16 @@ export default function CartPage() {
     }
   };
 
-  // 💡 🌟 【最重要】鉄壁の先制ガード処理
-  // 認証情報の初期確認中(authLoading)、またはセッションが切れて user が null になっている場合は
-  // カートの中身を一切レンダリングせず、ただ静かに白い画面を保ってアラートのリダイレクト処理を待ちます。
+  // 💡 【修正】ガード処理の画面表示
+  // 認証チェック中、または未ログイン（リダイレクトが走るまでの一瞬）は
+  // 画面がフリーズしたと誤解されないよう、シンプルなローディング表示を返します。
   if (authLoading || !user) {
-    return <div className="min-h-screen bg-gray-50"></div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500 font-medium">読み込み中...</p>
+      </div>
+    );
   }
-
-  // カート情報自体の読み込み判定（別名にした cartLoading を使用）
 
   if (cartLoading) {
     return <div className="text-center mt-10">カートを読み込んでいます...</div>;
@@ -165,10 +164,7 @@ export default function CartPage() {
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-3xl font-bold mb-6">ショッピングカート</h1>
       <div className="bg-white shadow-md rounded-lg mb-6">
-        {/* カートアイテムの一覧 */}
-        {/* 💡 手動定義の型から、Django直結の `DjangoCartItem` に変更 */}
         {cart.items.map((item: DjangoCartItem) => {
-          // 💡 バックエンド側の画像フィールドの構造に合わせて自動補完が効きます
           const imageUrl = getFullImageUrl(item.product.image);
 
           return (
