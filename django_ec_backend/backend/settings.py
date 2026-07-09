@@ -248,8 +248,11 @@ REST_FRAMEWORK = {
         'user': '1000/min',
         'burst': '10/minute',   # 短時間の連打対策（個別に適用）
         'sensitive': '5/minute',# ログインなど機密性の高い操作用
-    }
+    },
     # ▲ ここまで追記 ▲
+
+    # ✨ 作成したカスタム例外ハンドラーを指定
+    'EXCEPTION_HANDLER': 'utils.exceptions.custom_exception_handler',
 }
 
 # ★仕様書のタイトルなどの基本情報を設定します（ファイルの一番下などでOK）
