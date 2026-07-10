@@ -20,22 +20,47 @@ export default function OrdersPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    // 💡 通信キャンセルのためのコントローラーを用意
+    const abortController = new AbortController();
+
     const fetchOrders = async () => {
-      if (!user) return;
       try {
-        // 💡 3. fetch を secureFetch に変更し、自動ログアウトが効くようにする
-        const res = await secureFetch(`${apiUrl}/api/orders/`, fetchOptions('GET'));
+        // 💡 secureFetch に signal を渡して紐付ける
+        const res = await secureFetch(`${apiUrl}/api/orders/`, {
+          ...fetchOptions('GET'),
+          signal: abortController.signal
+        });
+
         if (res.ok) {
           const data: DjangoOrder[] = await res.json();
-          setOrders(data);
+          // 💡 画面がまだ存在している場合のみStateを更新
+          if (!abortController.signal.aborted) {
+            setOrders(data);
+          }
         }
-      } catch (error) {
-        console.error("注文履歴の取得に失敗しました", error);
+      } catch (error: any) {
+        // 💡 意図的なキャンセル（画面遷移）以外のエラーのみログに出力
+        if (error.name !== 'AbortError') {
+          console.error("注文履歴の取得に失敗しました", error);
+        }
       } finally {
-        setLoading(false);
+        if (!abortController.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
+
     fetchOrders();
+
+    // 💡 クリーンアップ関数で、アンマウント時に通信を安全に遮断
+    return () => {
+      abortController.abort();
+    };
   }, [user, apiUrl, fetchOptions, secureFetch]);
 
   if (loading) return <div className="text-center py-10 text-gray-600">読み込み中...</div>;
@@ -67,7 +92,6 @@ export default function OrdersPage() {
                 </div>
               </div>
               <div className="p-4">
-                {/* 💡 スキーマ定義に合わせてオプショナルチェーン（?.）で安全に展開 */}
                 {order.items?.map((item) => (
                   <div key={item.id} className="flex items-center space-x-4 py-3 border-b border-gray-100 last:border-0">
                     <div className="relative w-16 h-16 flex-shrink-0">

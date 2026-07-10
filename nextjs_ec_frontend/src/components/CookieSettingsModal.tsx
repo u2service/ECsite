@@ -49,16 +49,25 @@ export default function CookieSettingsModal({
 
   // 選択した設定を保存して閉じる
   const handleSave = (): void => {
+    localStorage.setItem('cookie-consent-settings', JSON.stringify(settings));
+    localStorage.setItem('cookie-consent-level', settings.performance && settings.advertising ? 'all' : 'custom');
     onSave(settings);
     onClose();
+
+    // 💡 同意状態（アクセス解析のON/OFFなど）を即座に適用するため、画面をリフレッシュ
+    window.location.reload();
   };
 
   // クイックボタン：すべてをONにして保存して閉じる
   const handleAcceptAll = (): void => {
     const allOn: CookieConsentSettings = { essential: true, performance: true, advertising: true };
-    setSettings(allOn);
+    localStorage.setItem('cookie-consent-settings', JSON.stringify(allOn));
+    localStorage.setItem('cookie-consent-level', 'all');
     onSave(allOn);
     onClose();
+
+    // 💡 同様に、即座にすべての解析・広告スクリプトを有効化するため画面をリフレッシュ
+    window.location.reload();
   };
 
   return (

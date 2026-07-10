@@ -19,7 +19,6 @@ interface SpecItem {
   values: string[];
 }
 
-// 絞り込み選択肢はキー（例: 'memory'）に対して表示名と配列を持つオブジェクト
 interface SpecOptions {
   [key: string]: SpecItem;
 }
@@ -28,9 +27,7 @@ interface CategoryItemProps {
   category: Category;
 }
 
-// ==========================================
-// 🌿 サブコンポーネント（再帰的なカテゴリツリー表示用）
-// ==========================================
+// 🌿 サブコンポーネント（カテゴリツリー表示用）
 const CategoryItem = ({ category }: CategoryItemProps): React.ReactElement => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const hasChildren = category.children && category.children.length > 0;
@@ -64,69 +61,80 @@ const CategoryItem = ({ category }: CategoryItemProps): React.ReactElement => {
   );
 };
 
-// ==========================================
 // 📄 メインサイドバーコンポーネント
-// ==========================================
 export default function CategorySidebar(): React.ReactElement {
   const [categories, setCategories] = useState<Category[]>([]);
   const [specOptions, setSpecOptions] = useState<SpecOptions>({});
   const params = useParams();
   const pathname = usePathname();
 
-  // 現在カテゴリページ (/categories/...) にいるかどうかを判定
   const isCategoryPage = pathname.startsWith('/categories/');
-  // カテゴリページの場合のみ params.id を文字列または配列から安全に取り出す
   const categoryId = isCategoryPage && params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : null;
   
-  // Contextから各種状態とハンドラ関数を取得
   const { filters, updateFilter, clearFilters } = useFilter();
 
-  // 1. カテゴリツリーの取得（初回マウント時のみ）
+  // 💡 1. カテゴリツリーの取得（AbortControllerを導入して安全ガード）
   useEffect(() => {
+    const abortController = new AbortController();
+
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/category-tree/`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/category-tree/`, {
+          signal: abortController.signal
+        });
         if (res.ok) {
           const data: Category[] = await res.json();
-          setCategories(data);
+          if (!abortController.signal.aborted) {
+            setCategories(data);
+          }
         }
-      } catch (err) {
-        console.error("Failed to fetch category tree:", err);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to fetch category tree:", err);
+        }
       }
     };
     fetchCategories();
+
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
-  // 2. カテゴリが変わったらスペック選択肢を取得（競合状態への堅牢化対応）
+  // 💡 2. カテゴリ変更時のスペック取得（isMounted から AbortController へ統一）
   useEffect(() => {
-    let isMounted = true;
+    if (!categoryId) {
+      setSpecOptions({});
+      return;
+    }
+
+    const abortController = new AbortController();
 
     const fetchSpecs = async () => {
-      if (!categoryId) {
-        setSpecOptions({});
-        return;
-      }
-
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/category-spec-values/${categoryId}/`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/category-spec-values/${categoryId}/`, {
+          signal: abortController.signal
+        });
         if (res.ok) {
           const data: SpecOptions = await res.json();
-          if (isMounted) {
+          if (!abortController.signal.aborted) {
             setSpecOptions(data);
           }
         } else {
-          if (isMounted) setSpecOptions({});
+          if (!abortController.signal.aborted) setSpecOptions({});
         }
-      } catch (err) {
-        console.error("Failed to fetch specs:", err);
-        if (isMounted) setSpecOptions({});
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to fetch specs:", err);
+          if (!abortController.signal.aborted) setSpecOptions({});
+        }
       }
     };
 
     fetchSpecs();
 
     return () => {
-      isMounted = false; // クリーンアップ関数でフラグを倒す
+      abortController.abort(); // 💡 次のカテゴリがクリックされたら古い通信を即時物理キャンセル！
     };
   }, [categoryId]);
 
@@ -142,7 +150,7 @@ export default function CategorySidebar(): React.ReactElement {
         </ul>
       </div>
 
-      {/* 絞り込みパネル (スペックが存在する場合のみ表示) */}
+      {/* 絞り込みパネル */}
       {specOptions && Object.keys(specOptions).length > 0 && (
         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm sticky top-4">
           <div className="flex justify-between items-center mb-4 border-b pb-2">
@@ -167,7 +175,6 @@ export default function CategorySidebar(): React.ReactElement {
               </h4>
               <div className="flex flex-wrap gap-2">
                 {spec.values.map(val => {
-                  // Context内のfiltersは string[] であることを安全にアサーション
                   const activeList = filters[key] as string[] | undefined;
                   const isActive = activeList?.includes(val) || false;
                   

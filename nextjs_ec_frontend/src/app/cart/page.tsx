@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useCart } from '@/context/CartContext';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -48,12 +48,17 @@ export default function CartPage() {
   const [shippingTotal, setShippingTotal] = useState(0);
   const [isCalculating, setIsCalculating] = useState(false);
 
-  // ✨ 【追加】未ログインユーザーを自動的にリダイレクトさせる処理
+  // 商品合計金額の計算（cartが変更されたときだけ再計算）
+  const itemsTotal = useMemo(() => {
+    return cart ? Number(cart.grand_total) : 0;
+  }, [cart?.grand_total]);
+
+  // 未ログインユーザーを自動的にリダイレクトさせる処理
   useEffect(() => {
     // 認証情報の確認が完了し（authLoadingがfalse）、かつユーザーが存在しない場合
     if (!authLoading && !user) {
       toast.error("カートを表示するにはログインが必要です。");
-      router.push('/login'); // 💡 実際のログインページのパスに合わせて調整してください
+      router.push('/login'); 
     }
   }, [user, authLoading, router]);
 
@@ -62,7 +67,8 @@ export default function CartPage() {
     const abortController = new AbortController();
 
     const fetchShipping = async () => {
-      if (!selectedPrefecture || !cart) {
+      // カートが空、または都道府県が未選択なら送料0でリターン
+      if (!selectedPrefecture || itemsTotal === 0) {
         setShippingTotal(0);
         return;
       }
@@ -97,7 +103,8 @@ export default function CartPage() {
     return () => {
       abortController.abort();
     };
-  }, [selectedPrefecture, JSON.stringify(cart?.items), fetchOptions, secureFetch]);
+  // 💡 依存配列を JSON.stringify から「都道府県」と「商品合計額」のプリミティブな値に変更
+  }, [selectedPrefecture, itemsTotal, fetchOptions, secureFetch]);
   
   const handleCheckout = async () => {
     if (!selectedPrefecture) {
@@ -122,7 +129,6 @@ export default function CartPage() {
       } else {
         console.error('Checkout Sessionの作成に失敗:', session);
         const errorMessage = (session as any)?.error || (session as any)?.detail || JSON.stringify(session);
-        console.error('詳細:', errorMessage);
         toast.error(`決済処理を開始できませんでした。詳細: ${errorMessage}`)
       }
     } catch (error) {
@@ -157,7 +163,6 @@ export default function CartPage() {
     );
   }
 
-  const itemsTotal = Number(cart.grand_total);
   const grandTotal = itemsTotal + shippingTotal;
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react'; // 💡 useEffect を削除
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -9,17 +9,15 @@ import { useSearchParams } from 'next/navigation';
 function LoginFormContent() {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [timeoutMessage, setTimeoutMessage] = useState<string>('');
   const { loginUser } = useAuth();
   const searchParams = useSearchParams();
 
-  useEffect(() => {
-    // URLに ?timeout=true が含まれている場合にメッセージを表示
-    // 💡 先ほど仕込んだ AuthContext の handleSessionTimeout からここへリダイレクトされます！
-    if (searchParams.get('timeout') === 'true') {
-      setTimeoutMessage('タイムアウトによりログアウトされました。再度ログインしてください。');
-    }
-  }, [searchParams]);
+  // 💡 【修正点】useState と useEffect を完全に廃止！
+  // URLのパラメータからその場で直接判定してメッセージを作成します（エラーの完全解消）
+  const isTimeout = searchParams.get('timeout') === 'true';
+  const timeoutMessage = isTimeout 
+    ? 'タイムアウトによりログアウトされました。再度ログインしてください。' 
+    : '';
 
   // 💡 フォーム送信イベントオブジェクトの型付け
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -47,7 +45,6 @@ function LoginFormContent() {
             type="email"
             id="email"
             value={email}
-            // 💡 インプット変更イベントオブジェクトの型付け
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="example@mail.com"
@@ -62,7 +59,6 @@ function LoginFormContent() {
             type="password"
             id="password"
             value={password}
-            // 💡 インプット変更イベントオブジェクトの型付け
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required

@@ -16,16 +16,22 @@ export default function CancelContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // 💡 URLにsession_idがない場合は、即座に不正なアクセスとしてエラーにする
     if (!sessionId) {
+      setError('セッションIDが見つかりません。正しいリンクからアクセスしてください。');
       setLoading(false);
       return;
     }
+
+    // 💡 カートページ同様、通信キャンセルのためのコントローラーを用意
+    const abortController = new AbortController();
 
     const checkStatus = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         const res = await fetch(`${apiUrl}/api/checkout-status/?session_id=${sessionId}`, {
           method: 'GET',
+          signal: abortController.signal, // 💡 シグナルを紐付け
         });
 
         if (!res.ok) {
@@ -33,18 +39,33 @@ export default function CancelContent() {
         }
 
         const data = await res.json();
-        setOrderStatus(data.status);
-        setHasStock(data.has_stock);
+        
+        // 💡 コンポーネントがまだ画面に存在する場合のみStateを更新する
+        if (!abortController.signal.aborted) {
+          setOrderStatus(data.status);
+          setHasStock(data.has_stock);
+        }
       } catch (err: any) {
-        setError(err.message || '予期せぬエラーが発生しました。');
+        // 💡 意図的なキャンセル（画面遷移）以外のエラーのみ捕捉
+        if (err.name !== 'AbortError') {
+          setError(err.message || '予期せぬエラーが発生しました。');
+        }
       } finally {
-        setLoading(false);
+        if (!abortController.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     checkStatus();
-  }, [sessionId]);
 
+    // 💡 クリーンアップ関数で、アンマウント時に通信を安全に遮断する
+    return () => {
+      abortController.abort();
+    };
+  }, [sessionId]); // プリミティブな文字列なのでこのままで安全です！
+
+  // --- 以下、表示ロジックは変更なし ---
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -62,7 +83,6 @@ export default function CancelContent() {
     );
   }
 
-  // 【パターンA】30分放置で時間切れ失効している場合
   if (orderStatus === 'expired') {
     return (
       <div className="max-w-xl mx-auto my-12 p-8 bg-white border border-gray-200 rounded-xl shadow-sm text-center">
@@ -93,7 +113,6 @@ export default function CancelContent() {
     );
   }
 
-  // 【パターンB】ユーザーが決済画面の「戻る」を自ら押して戻ってきた場合
   return (
     <div className="max-w-xl mx-auto my-12 p-8 bg-white border border-gray-200 rounded-xl shadow-sm text-center">
       <h1 className="text-2xl font-bold text-gray-800 mb-4">決済がキャンセルされました</h1>

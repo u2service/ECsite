@@ -1,12 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useAuth } from './AuthContext'; // ログイン状態を取得するために使用
+import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 
-// ==========================================
-// 💡 カート構造の型定義
-// ==========================================
 export interface CartItem {
   id: number;
   product_id?: number;
@@ -26,11 +23,10 @@ export interface Cart {
   total_items?: number;
 }
 
-// 💡 Context が外部に提供する値（関数・ステート）の型定義
 interface CartContextType {
   cart: Cart | null;
   loading: boolean;
-  fetchCart: () => Promise<void>;
+  fetchCart: (signal?: AbortSignal) => Promise<void>; // 💡 引数でSignalを受け取れるよう拡張
   addItemToCart: (productId: number, quantity: number) => Promise<void>;
   removeItemFromCart: (itemId: number) => Promise<void>;
   updateItemQuantity: (itemId: number, quantity: number) => Promise<void>;
@@ -41,108 +37,107 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const useCart = (): CartContextType => {
   const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
+  if (!context) throw new Error('useCart must be used within a CartProvider');
   return context;
 };
 
-interface CartProviderProps {
-  children: ReactNode;
-}
+interface CartProviderProps { children: ReactNode; }
 
-// ==========================================
-// 📄 プロバイダーコンポーネント
-// ==========================================
 export const CartProvider = ({ children }: CartProviderProps): React.ReactElement => {
-  const [cart, setCart] = useState<Cart | null>(null);
+  const { user, fetchOptions } = useAuth();
+  
+  // カートの初期状態
+  const initialCartState: Cart = { items: [], grand_total: 0, total_items: 0 };
+  const [cart, setCart] = useState<Cart | null>(initialCartState);
   const [loading, setLoading] = useState<boolean>(true);
-  const { user, fetchOptions } = useAuth(); // AuthContextからユーザー情報と共通のfetchオプションを取得
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
-  // カート情報を取得または作成する関数
-  const fetchCart = useCallback(async (): Promise<void> => {
-    console.log("fetchCart: 取得開始");
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  // 💡 1. カート情報を取得 (AbortSignal に対応)
+  const fetchCart = useCallback(async (signal?: AbortSignal) => {
+    // 💡 未ログインの場合は通信せず初期状態にする（後述のuseEffectでケアするため、ここではローディング終了のみ）
     if (!user) {
-      setCart(null);
       setLoading(false);
       return;
     }
-    setLoading(true);
-    try {
-      const res = await fetch(`${apiUrl}/api/cart/`, fetchOptions('GET'));
-      if (res.ok) {
-        const data: Cart = await res.json();
 
-        // ★ レースコンディション対策：
-        // URLに session_id が含まれている場合は、決済直後なのでサーバーのデータが古くても無視して空にする
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('session_id')) {
-          console.log("Successページのため、空のカート状態を維持します");
-          setCart({ items: [], grand_total: 0 });
-        } else {
+    try {
+      const res = await fetch(`${apiUrl}/api/cart/`, {
+        ...fetchOptions('GET'),
+        signal // 👈 fetchにsignalを紐付け
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (!signal?.aborted) {
           setCart(data);
         }
-      } else {
-        setCart(null);
       }
-    } catch (error) {
-      console.error("Error fetching cart:", error);
-      setCart(null);
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error("Error fetching cart:", error);
+      }
     } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }, [apiUrl, fetchOptions, user]);
+
+  // 💡 2. ログイン状態の変更を監視して、カートを同期・クリーンアップする
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    if (user) {
+      // 🔓 ログインした、あるいはログイン中の場合は最新のカートを取得
+      setLoading(true);
+      fetchCart(abortController.signal);
+    } else {
+      // 🔒 ログアウトした場合は、古いカート情報を残さず即座にクリアする！
+      setCart(initialCartState);
       setLoading(false);
     }
-  }, [user, apiUrl, fetchOptions]);
 
-  // ユーザーのログイン状態が変わったらカートを再取得
-  useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
+    return () => {
+      abortController.abort(); // アンマウント時やユーザー切り替え時に古い通信を遮断
+    };
+  }, [user, fetchCart]);
 
-  // カートに商品を追加する関数
+  // 商品をカートに追加
   const addItemToCart = useCallback(async (productId: number, quantity: number): Promise<void> => {
-    if (!user) {
-      toast("ログインしてください。")
-      return;
-    }
     try {
-      const res = await fetch(`${apiUrl}/api/cart/add-item/`, fetchOptions('POST', {
+      const res = await fetch(`${apiUrl}/api/cart/`, fetchOptions('POST', {
         product_id: productId,
         quantity: quantity,
       }));
       if (res.ok) {
-        const data: Cart = await res.json();
-        setCart(data); // サーバーからの最新のカート情報で更新
-        toast("カートに商品を追加しました。")
+        toast.success("商品をカートに追加しました！");
+        fetchCart();
       } else {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("カート追加失敗:", res.status, errorData);
-        toast.error(`カートへの追加に失敗しました。 (Error: ${res.status})`)
+        const errData = await res.json();
+        toast.error(errData.detail || "カートへの追加に失敗しました。");
       }
     } catch (error) {
-      console.error("Error adding item to cart:", error);
+      console.error("Error adding item:", error);
     }
-  }, [user, apiUrl, fetchOptions]);
+  }, [apiUrl, fetchOptions, fetchCart]);
 
-  // カート内の商品を削除する関数
+  // 商品をカートから削除
   const removeItemFromCart = useCallback(async (itemId: number): Promise<void> => {
     try {
       const res = await fetch(`${apiUrl}/api/cart-items/${itemId}/`, fetchOptions('DELETE'));
       if (res.ok) {
-        // 削除成功後、カート情報を再取得して更新
         fetchCart();
       } else {
-        toast.error("商品の削除に失敗しました。")
+        toast.error("商品の削除に失敗しました。");
       }
     } catch (error) {
       console.error("Error removing item:", error);
     }
   }, [apiUrl, fetchOptions, fetchCart]);
 
-  // カート内の商品の数量を更新する関数
+  // 商品の数量を更新
   const updateItemQuantity = useCallback(async (itemId: number, quantity: number): Promise<void> => {
     if (quantity < 1) {
-      // 数量が0以下の場合は商品を削除
       removeItemFromCart(itemId);
       return;
     }
@@ -151,38 +146,22 @@ export const CartProvider = ({ children }: CartProviderProps): React.ReactElemen
         quantity: quantity,
       }));
       if (res.ok) {
-        // 更新成功後、カート情報を再取得して更新
         fetchCart();
       } else {
-        toast.error("数量の更新に失敗しました。")
+        toast.error("数量の更新に失敗しました。");
       }
     } catch (error) {
       console.error("Error updating quantity:", error);
     }
   }, [apiUrl, fetchOptions, fetchCart, removeItemFromCart]);
 
-  // カートを空にする関数
-  // 💡 useCallbackでラップし、型安全に外部に提供できるよう修正
+  // カートを完全に空にする関数（フロントの表示用フォールバック）
   const clearCart = useCallback((): void => {
-    // フロントエンドのステートを初期値に戻す
-    setCart({
-      items: [],
-      grand_total: 0,
-      total_items: 0
-    });
-    console.log("Cart state has been cleared.");
+    setCart(initialCartState);
   }, []);
-  
+
   return (
-    <CartContext.Provider value={{ 
-      cart, 
-      loading, 
-      fetchCart, // 💡 プロバイダー値への入れ忘れを補填しました
-      addItemToCart, 
-      removeItemFromCart, 
-      updateItemQuantity, 
-      clearCart 
-    }}>
+    <CartContext.Provider value={{ cart, loading, fetchCart, addItemToCart, removeItemFromCart, updateItemQuantity, clearCart }}>
       {children}
     </CartContext.Provider>
   );

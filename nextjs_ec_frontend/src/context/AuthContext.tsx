@@ -36,88 +36,93 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
   const isTimingOutRef = useRef<boolean>(false);
   
   const router = useRouter();
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  const getCsrfToken = (): string | null => {
-    if (typeof document === 'undefined') return null; 
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; csrftoken=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-    return null;
-  };
-
-  const fetchOptions = useCallback((method: string, body: any = null): RequestInit => {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (method !== 'GET') {
-      const csrfToken = getCsrfToken();
-      if (csrfToken) headers['X-CSRFToken'] = csrfToken;
-    }
-    const options: RequestInit = { method, headers, credentials: 'include' };
+  // 💡 fetchOptionsの共通化
+  const fetchOptions = useCallback((method: string, body?: any): RequestInit => {
+    const options: RequestInit = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // HttpOnlyクッキー（JWT）をバックエンドへ自動送信
+    };
     if (body) options.body = JSON.stringify(body);
     return options;
   }, []);
 
-  // 3. タイムアウト処理
+  // 💡 1. 初期マウント時のユーザーセッション確認（AbortControllerを導入）
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    const fetchUser = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/auth/user/`, {
+          ...fetchOptions('GET'),
+          signal: abortController.signal
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (!abortController.signal.aborted) {
+            setUser(data);
+          }
+        }
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error('Fetch user error:', error);
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchUser();
+
+    return () => {
+      abortController.abort(); // アンマウント時に未完了のセッション確認を安全に遮断
+    };
+  }, [apiUrl, fetchOptions]);
+
+  // 💡 2. タイムアウト時の自動ログアウト処理
   const handleSessionTimeout = useCallback(() => {
-    if (typeof window === 'undefined') return;
     if (isTimingOutRef.current) return;
     isTimingOutRef.current = true;
-
-    const currentPath = window.location.pathname;
-
-    // ログイン不要・パスワード関連の画面、および決済キャンセル画面ではトーストを出さない
-    if (
-      currentPath === '/login' || 
-      currentPath === '/forgot-password' || 
-      currentPath.startsWith('/password-reset-confirm') ||
-      currentPath === '/checkout/cancel' // 👈 キャンセル画面でのトーストを確実にガード
-    ) {
-      setUser(null);
-      isTimingOutRef.current = false;
-      return;
-    }
-
-    // 💡 シンプルに「タイムアウト通知」を発火させてトップへ戻す
-    toast("タイムアウトによりログアウトされました。");
+    
     setUser(null);
-    router.push('/');
-
-    setTimeout(() => { isTimingOutRef.current = false; }, 3000);
+    router.push('/login?timeout=true');
+    
+    setTimeout(() => {
+      isTimingOutRef.current = false;
+    }, 1000);
   }, [router]);
 
-  // 4. アプリ全体の401（認証切れ）を中央監視するラッパーFetch関数（※完全不動・空の依存配列で無限ループを徹底防止）
-  const secureFetch = useCallback(async (url: string, options: RequestInit): Promise<Response> => {
-    const res = await fetch(url, options);
-    if (res.status === 401) {
-      console.warn("セッションの有効期限が切れたか、未認証です。自動ログアウトします。");
-      handleSessionTimeout();
-    }
-    return res;
-  }, [handleSessionTimeout]);
-
-  // 1. ユーザーの状態を確認
-  const checkUserStatus = useCallback(async () => {
-    try {
-      // ─── ✨ 【核心の修正】初期チェックは中央監視(secureFetch)を通さず、通常の fetch で叩く ───
-      const res = await fetch(`${apiUrl}/api/auth/user/`, fetchOptions('GET'));
-      if (res.ok) {
-        const userData = await res.json();
-        setUser(userData);
-      } else {
-        setUser(null);
-      }
-    } catch (error: any) {
-      console.error("Check status error:", error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [apiUrl, fetchOptions]); // 💡 secureFetch への依存が消えたため、連鎖の危険性が完全にゼロに
-
+  // 💡 未ログイン時にも裏で走り続けないように依存配列と条件を最適化
   useEffect(() => {
-    checkUserStatus();
-  }, [checkUserStatus]);
+    // 💡 【修正】未ログイン状態なら、セッション切れの監視イベントを仕込む必要はありません！
+    if (!user) return;
 
+    const handleTimeoutEvent = () => handleSessionTimeout();
+    window.addEventListener('auth-session-timeout', handleTimeoutEvent);
+    
+    return () => {
+      window.removeEventListener('auth-session-timeout', handleTimeoutEvent);
+    };
+  }, [user, handleSessionTimeout]); // 💡 user の状態を正しく追跡
+
+  // 💡 401エラー（認証切れ）を検知してカスタムイベントを飛ばすインターセプター
+  const secureFetch = useCallback(async (url: string, options: RequestInit): Promise<Response> => {
+    try {
+      const res = await fetch(url, options);
+      if (res.status === 401 || res.status === 403) {
+        window.dispatchEvent(new CustomEvent('auth-session-timeout'));
+      }
+      return res;
+    } catch (error) {
+      throw error;
+    }
+  }, []);
+
+  // ログイン処理
   const loginUser = useCallback(async (email: string, password: string): Promise<void> => {
     try {
       const res = await fetch(`${apiUrl}/api/auth/login/`, fetchOptions('POST', { email, password }));
@@ -132,27 +137,28 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
     } catch (error) { console.error('Login error:', error); }
   }, [apiUrl, fetchOptions, router]);
 
+  // ログアウト処理
   const logoutUser = useCallback(async (): Promise<void> => {
     try { await fetch(`${apiUrl}/api/auth/logout/`, fetchOptions('POST')); } 
     catch (error) { console.error('Logout error:', error); } 
     finally { setUser(null); router.push('/login'); }
   }, [apiUrl, fetchOptions, router]);
 
+  // 会員登録処理
   const registerUser = useCallback(async (username: string, password: string, email: string = ""): Promise<void> => {
     try {
       const res = await fetch(`${apiUrl}/api/auth/registration/`, fetchOptions('POST', { username, password, email }));
       if (res.ok) {
         await loginUser(email, password);
       } else {
-        const errorData = await res.json();
-        toast.error('登録に失敗しました。')
+        toast.error('登録に失敗しました。');
       }
     } catch (error) { console.error('登録エラー:', error); }
   }, [apiUrl, fetchOptions, loginUser]);
 
   return (
     <AuthContext.Provider value={{ user, loading, loginUser, logoutUser, registerUser, fetchOptions, secureFetch }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

@@ -29,6 +29,8 @@ export default function AnalyticsWrapper(): React.ReactElement | null {
         setSettings(parsed);
       } catch (error) {
         console.error('Failed to parse cookie-consent-settings:', error);
+        // 💡 壊れていた場合のフォールバック（例：すべて拒否して動かす）
+        setSettings({ essential: true, performance: false, advertising: false });
       }
     } else if (legacyLevel) {
       // 以前の簡易設定（文字列形式）がある場合の互換性維持
