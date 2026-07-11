@@ -29,7 +29,8 @@ urlpatterns = [
     
     path('', include(router.urls)),
     path('create-checkout-session/', CreateCheckoutSessionView.as_view(), name='create-checkout-session'),
-    path('webhook/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'), # Webhook URLを追加
+    path('stripe/webhook/', StripeWebhookView.as_view(), name='stripe-webhook'),
+
 
     # 💡 2. 決済ステータス確認用のルーティングを追加
     # ※ URLパターン（'checkout-status/' やパラメータ）は、フロントエンドや元の設計に合わせて調整してください

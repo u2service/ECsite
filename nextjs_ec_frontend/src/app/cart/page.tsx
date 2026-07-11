@@ -106,6 +106,15 @@ export default function CartPage() {
   // 💡 依存配列を JSON.stringify から「都道府県」と「商品合計額」のプリミティブな値に変更
   }, [selectedPrefecture, itemsTotal, fetchOptions, secureFetch]);
   
+  // クッキーからCSRFトークンを取得するヘルパー関数（関数の外か中に配置）
+  const getCookie = (name: string) => {
+    if (typeof document === 'undefined') return '';
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift() || '';
+    return '';
+  };
+
   const handleCheckout = async () => {
     if (!selectedPrefecture) {
       toast("配送先の都道府県を選択してください。")
@@ -113,9 +122,19 @@ export default function CartPage() {
     }
 
     try {
+      // 1. クッキーからCSRFトークンを抽出
+      const csrfToken = getCookie('csrftoken');
+
+      // 2. fetchOptions のヘッダーに X-CSRFToken をマージする
+      const options = fetchOptions('POST', { prefecture: selectedPrefecture });
+      options.headers = {
+        ...options.headers,
+        'X-CSRFToken': csrfToken,
+      };
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/create-checkout-session/`,
-        fetchOptions('POST', { prefecture: selectedPrefecture })
+        options // 修正したoptionsを渡す
       );
       const session: CheckoutResponse = await res.json();
 
