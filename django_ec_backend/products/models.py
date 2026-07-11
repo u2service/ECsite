@@ -73,13 +73,14 @@ class Product(models.Model):
         """
         有効在庫数 = 物理在庫数(stock) - 有効な仮押さえ数
         """
-        # この商品を含み、かつ現在「仮押さえ中」で「期限が未来」のOrderItemの総数量をカウント
-        # OrderItem経由で親のOrderの状態を見に行きます
-        active_reservations = OrderItem.objects.filter(
+        res = OrderItem.objects.filter(
             product=self,
             order__status='pending_reservation',
             order__reserved_until__gt=timezone.now()
-        ).aggregate(models.Sum('quantity'))['quantity__sum'] or 0
+        ).aggregate(total=models.Sum('quantity'))
+        
+        # 返ってきた辞書から 'total' を安全に取得。Noneなら0にする
+        active_reservations = res.get('total') or 0
         
         # 物理在庫から仮押さえ分を引いた数を返す（0未満にならないよう制御）
         return max(0, self.stock - active_reservations)
