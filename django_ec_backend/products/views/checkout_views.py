@@ -47,6 +47,46 @@ class CreateCheckoutSessionView(APIView):
         except Cart.DoesNotExist:
             return Response({'error': 'カートが見つかりません'}, status=status.HTTP_404_NOT_FOUND)
 
+        # ==========================================
+        # 【追加】自分自身の有効な仮押さえ（既存セッション）があれば再利用する
+        # ==========================================
+        now = timezone.now()
+        existing_order = Order.objects.filter(
+            user=request.user,
+            status='pending_reservation',
+            reserved_until__gt=now,  # まだ有効期限内のもの
+            stripe_checkout_session_id__isnull=False
+        ).order_by('-created_at').first()  # 最新のものを取得（モデルにcreated_at等がある前提）
+
+        if existing_order:
+            # カートの中身と、既存オーダーの中身（商品と数量）が一致しているか簡易検証
+            # ※もしカート内容が変わっている場合は、古いオーダーをexpiredにして新規作成に進むロジックにしてもOKです
+            cart_items = list(cart.items.all())
+            order_items = list(existing_order.items.all())
+            
+            if len(cart_items) == len(order_items):
+                # 中身が一致しているかチェック
+                match = True
+                for c_item in cart_items:
+                    # 既存オーダー内に同じ商品・数量があるか
+                    if not existing_order.items.filter(product=c_item.product, quantity=c_item.quantity).exists():
+                        match = False
+                        break
+                
+                if match:
+                    try:
+                        # Stripe側でもセッションがまだ有効（open）か確認、またはそのままURLを返す
+                        stripe.api_key = settings.STRIPE_SECRET_KEY
+                        session = stripe.checkout.Session.retrieve(existing_order.stripe_checkout_session_id)
+                        
+                        if session.status == 'open':
+                            # 有効なセッションが残っているので、そのままそのURLにリダイレクトさせる
+                            return JsonResponse({'id': session.id, 'url': session.url})
+                    except Exception:
+                        # Stripe側で何らかの理由で失効していた場合は、例外をスルーして新規作成へ流す
+                        pass
+        # ==========================================
+
         # 【改修1】有効在庫チェック (available_stock を確認し、競合を防ぐためにデータベース行をロック)
         with transaction.atomic():
             for item in cart.items.all():
