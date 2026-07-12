@@ -146,9 +146,9 @@ export default function CartPage() {
           toast.error('決済処理を開始できませんでした。')
         }
       } else {
-        console.error('Checkout Sessionの作成に失敗:', session);
+        console.log('Checkout Sessionの作成に失敗:', session);
         const errorMessage = (session as any)?.error || (session as any)?.detail || JSON.stringify(session);
-        toast.error(`決済処理を開始できませんでした。詳細: ${errorMessage}`)
+        toast(`決済処理を開始できませんでした。詳細: ${errorMessage}`)
       }
     } catch (error) {
       console.error('決済処理エラー:', error);
