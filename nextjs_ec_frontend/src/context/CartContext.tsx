@@ -105,7 +105,7 @@ export const CartProvider = ({ children }: CartProviderProps): React.ReactElemen
   // 商品をカートに追加
   const addItemToCart = useCallback(async (productId: number, quantity: number): Promise<void> => {
     try {
-      const res = await fetch(`${apiUrl}/api/cart/`, fetchOptions('POST', {
+      const res = await fetch(`${apiUrl}/api/cart/add-item/`, fetchOptions('POST', {
         product_id: productId,
         quantity: quantity,
       }));

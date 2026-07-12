@@ -38,11 +38,35 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.ReactElemen
   const router = useRouter();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
+  // 💡 1. ファイル内の `fetchOptions` の上に、Cookie取得用の関数を追加します
+  const getCookie = (name: string): string => {
+    if (typeof document === 'undefined') return ''; // SSR（サーバーサイドレンダリング）対策
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift() || '';
+    return '';
+  };
+
   // 💡 fetchOptionsの共通化
   const fetchOptions = useCallback((method: string, body?: any): RequestInit => {
+        // GETやHEADなどの安全なメソッドの時はCSRFトークンは不要ですが、
+    // POST/PUT/DELETEなどの時にCookieからトークンを取得してセットします
+    const csrfToken = ['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method.toUpperCase())
+      ? ''
+      : getCookie('csrftoken');
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // CSRFトークンが存在すればヘッダーに追加する
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+
     const options: RequestInit = {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include', // HttpOnlyクッキー（JWT）をバックエンドへ自動送信
     };
     if (body) options.body = JSON.stringify(body);
