@@ -120,15 +120,6 @@ else:
         }
     }
 
-# Render（本番環境）の環境変数 DATABASE_URL が存在する場合のみ、設定をPostgreSQLで上書きする
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
-    DATABASES['default'] = dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-        ssl_require=True
-    )
-
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -297,6 +288,7 @@ ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 # 3. メール検証の設定（開発中は重要！）
 # 'mandatory' にするとメール確認が取れるまでログインできなくなります。
 # 開発中は 'none'（検証なし）に設定して、登録後すぐ使えるようにするのがスムーズです。
+# 今回はサンプルプロジェクトのため、メール確認を必須としていません。
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 
 # 4. ユーザー名の重複を許さない
