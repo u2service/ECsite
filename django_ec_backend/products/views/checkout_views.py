@@ -86,99 +86,56 @@ class CreateCheckoutSessionView(APIView):
                         # Stripe側で何らかの理由で失効していた場合は、例外をスルーして新規作成へ流す
                         pass
         # ==========================================
-
-        # 【改修1】有効在庫チェック (available_stock を確認し、競合を防ぐためにデータベース行をロック)
-        with transaction.atomic():
-            for item in cart.items.all():
-                # 競合を防ぐため、対象のProductレコードにロックをかける
-                product = Product.objects.select_for_update().get(id=item.product.id)
-                if product.available_stock < item.quantity:
-                    return Response(
-                        {'error': f'申し訳ありません。{product.name} は現在別のお客様が手続き中、または在庫不足です（購入可能数: {product.available_stock}個）。'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-        # 送料の計算
-        shipping_total = 0
-        for item in cart.items.all():
-            try:
-                postage = Postage.objects.get(prefecture=prefecture, size=item.product.shipping_size)
-                shipping_total += postage.cost * item.quantity
-            except Postage.DoesNotExist:
-                return Response({'error': f'{prefecture}への送料設定が見つかりません。'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 金額算出
-        items_total = sum(item.product.price * item.quantity for item in cart.items.all())
-        grand_total = items_total + shipping_total
-
-        # 【改修2】Orderオブジェクトの作成（仮押さえステータスと、30分後の有効期限をセット）
-        now = timezone.now()
-        reservation_deadline = now + timedelta(minutes=30)
-
-        order = Order.objects.create(
-            user=request.user,
-            total_amount=grand_total,
-            shipping_cost=shipping_total,
-            full_name='',
-            email=request.user.email,
-            shipping_address='',
-            status='pending_reservation', # 'pending' から 'pending_reservation' に変更
-            reserved_until=reservation_deadline # 仮押さえ有効期限を保存
-        )
-        for item in cart.items.all():
-            OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                quantity=item.quantity,
-                price=item.product.price
-            )
-
-        # Stripe用のline_items作成
-        line_items = []
-        for item in cart.items.all():
-            line_items.append({
-                'price_data': {
-                    'currency': 'jpy',
-                    'product_data': {'name': item.product.name},
-                    'unit_amount': int(item.product.price),
-                },
-                'quantity': item.quantity,
-            })
-        
-        if shipping_total > 0:
-            line_items.append({
-                'price_data': {
-                    'currency': 'jpy',
-                    'product_data': {'name': '送料'},
-                    'unit_amount': int(shipping_total),
-                },
-                'quantity': 1,
-            })
-
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-        stripe.api_key = settings.STRIPE_SECRET_KEY
+        # 在庫チェック＋Order作成を同一トランザクション内で実行
+        # ==========================================
         try:
-            # 【改修3】Stripeのセッション作成パラメータ変更（有効期限の設定）
-            # Stripeの制限上、expires_at は「今から30分以上、24時間以内」のUnixタイムスタンプである必要があります
-            stripe_expires_at = int(reservation_deadline.timestamp())
+            with transaction.atomic():
+                cart_items = list(cart.items.select_related('product').all())
 
-            checkout_session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=line_items,
-                mode='payment',
-                success_url=f'{frontend_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}',
-                cancel_url=f'{frontend_url}/checkout/cancel?session_id={{CHECKOUT_SESSION_ID}}', # 後方互換・追跡用にパラメータ付与
-                customer_email=request.user.email,
-                metadata={'order_id': order.id},
-                shipping_address_collection={'allowed_countries': ['JP']},
-                billing_address_collection='required',
-                phone_number_collection={'enabled': True},
-                idempotency_key=f"checkout_order_{order.id}",
-                expires_at=stripe_expires_at, # Stripe自体も30分で自動失効させる設定を追加！
+                for item in cart_items:
+                    # 競合を防ぐため、対象のProductレコードにロックをかける
+                    product = Product.objects.select_for_update().get(id=item.product.id)
+                    if product.available_stock < item.quantity:
+                        return Response(
+                            {'error': f'申し訳ありません。{product.name} は現在別のお客様が手続き中、または在庫不足です（購入可能数: {product.available_stock}個）。'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+            # 送料の計算
+            shipping_total = 0
+            for item in cart_items:
+                try:
+                    postage = Postage.objects.get(prefecture=prefecture, size=item.product.shipping_size)
+                    shipping_total += postage.cost * item.quantity
+                except Postage.DoesNotExist:
+                    return Response({'error': f'{prefecture}への送料設定が見つかりません。'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 金額算出
+            items_total = sum(item.product.price * item.quantity for item in cart_items)
+            grand_total = items_total + shipping_total
+
+            # Orderオブジェクトの作成（仮押さえステータスと、30分後の有効期限をセット）
+            now = timezone.now()
+            reservation_deadline = now + timedelta(minutes=30)
+
+            order = Order.objects.create(
+                user=request.user,
+                total_amount=grand_total,
+                shipping_cost=shipping_total,
+                full_name='',
+                email=request.user.email,
+                shipping_address='',
+                status='pending_reservation', 
+                reserved_until=reservation_deadline 
             )
-            order.stripe_checkout_session_id = checkout_session.id
-            order.save()
-            return JsonResponse({'id': checkout_session.id, 'url': checkout_session.url})
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.product,
+                    quantity=item.quantity,
+                    price=item.product.price
+                )
+
         except Exception as e:
             order.delete()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
