@@ -86,7 +86,7 @@ class CreateCheckoutSessionView(APIView):
                         # Stripe側で何らかの理由で失効していた場合は、例外をスルーして新規作成へ流す
                         pass
         # ==========================================
-        # 在庫チェック＋Order作成を同一トランザクション内で実行
+        # 在庫チェック＋Order作成＋Stripeセッション作成
         # ==========================================
         try:
             with transaction.atomic():
@@ -136,6 +136,51 @@ class CreateCheckoutSessionView(APIView):
                     price=item.product.price
                 )
 
+            # Stripe用のline_items作成
+            line_items = []
+            for item in cart_items:
+                line_items.append({
+                    'price_data': {
+                        'currency': 'jpy',
+                        'product_data': {'name': item.product.name},
+                        'unit_amount': int(item.product.price),
+                    },
+                    'quantity': item.quantity,
+                })
+
+            if shipping_total > 0:
+                line_items.append({
+                    'price_data': {
+                        'currency': 'jpy',
+                        'product_data': {'name': '送料'},
+                        'unit_amount': int(shipping_total),
+                    },
+                    'quantity': 1,
+                })
+
+            frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+
+            stripe_expires_at = int(reservation_deadline.timestamp())
+
+            checkout_session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=line_items,
+                mode='payment',
+                success_url=f'{frontend_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}',
+                cancel_url=f'{frontend_url}/checkout/cancel?session_id={{CHECKOUT_SESSION_ID}}',
+                customer_email=request.user.email,
+                metadata={'order_id': order.id},
+                shipping_address_collection={'allowed_countries': ['JP']},
+                billing_address_collection='required',
+                phone_number_collection={'enabled': True},
+                idempotency_key=f"checkout_order_{order.id}",
+                expires_at=stripe_expires_at,
+            )
+            order.stripe_checkout_session_id = checkout_session.id
+            order.save()
+            return JsonResponse({'id': checkout_session.id, 'url': checkout_session.url})
+          
         except Exception as e:
             order.delete()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

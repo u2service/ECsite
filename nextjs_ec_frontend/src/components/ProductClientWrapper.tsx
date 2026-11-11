@@ -119,8 +119,8 @@ export default function ProductClientWrapper({ product }: ProductClientWrapperPr
 
         <h1 className="text-3xl font-bold mb-4 text-slate-900">{product.name}</h1>
 
-        {product.stock > 0 ? (
-          <p className="text-green-600 font-semibold mb-2">在庫あり（残り {product.stock} 点）</p>
+        {product.available_stock > 0 ? (
+          <p className="text-green-600 font-semibold mb-2">在庫あり（残り {product.available_stock} 点）</p>
         ) : (
           <p className="text-red-600 font-bold mb-2">申し訳ありません、現在売り切れです</p>
         )}
@@ -135,14 +135,14 @@ export default function ProductClientWrapper({ product }: ProductClientWrapperPr
 
         <button
           onClick={() => addItemToCart(product.id, 1)}
-          disabled={product.stock === 0}
+          disabled={product.available_stock === 0}
           className={`w-full py-4 rounded-xl text-xl font-semibold transition-all shadow-lg focus:outline-none ${
-            product.stock > 0
+            product.available_stock > 0
               ? "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
               : "bg-gray-400 text-gray-200 cursor-not-allowed"
           }`}
         >
-          {product.stock > 0 ? "カートに入れる" : "売り切れ"}
+          {product.available_stock > 0 ? "カートに入れる" : "売り切れ"}
         </button>
       </div>
     </div>

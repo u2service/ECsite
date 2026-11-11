@@ -34,6 +34,7 @@ export type Product = {
   };
   description: string;
   stock: number; // ★ 在庫数も共通化
+  available_stock: number;
   images?: ProductImage[]; // ★ 詳細画面用のサブ画像一覧（オプショナル）
   comment_count?: number;
   specifications: {
