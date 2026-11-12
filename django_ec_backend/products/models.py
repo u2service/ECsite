@@ -67,7 +67,6 @@ class Product(models.Model):
         verbose_name="配送サイズ"
     )
 
-    # --- ▼ ここから新設 ▼ ---
     @property
     def available_stock(self):
         """
@@ -84,7 +83,6 @@ class Product(models.Model):
         
         # 物理在庫から仮押さえ分を引いた数を返す（0未満にならないよう制御）
         return max(0, self.stock - active_reservations)
-    # --- ▲ ここまで新設 ▲ ---
 
     def __str__(self):
         return self.name if self.name else "Unnamed Product"
@@ -179,7 +177,7 @@ class OrderItem(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2) # 注文時の価格を記録
 
     def __str__(self):
-        # 【修正対象】productがNoneの場合を考慮
+        # productがNoneの場合を考慮
         product_name = self.product.name if self.product else "[Deleted Product]"
         return f"{self.quantity} of {product_name}"
     
