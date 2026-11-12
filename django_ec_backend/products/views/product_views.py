@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Q, Count
@@ -10,15 +10,22 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
-
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = [
+        'id',
+        'name',
+        'price',
+        'stock',
+        'created_at',
+        'comment_count_annotated',
+    ]
+    
     def get_queryset(self):
         queryset = Product.objects.annotate(comment_count_annotated=Count('comments'))
         category_id = self.request.query_params.get('category_id')
         search_query = self.request.query_params.get('q')
-        ordering = self.request.query_params.get('ordering')
-        limit = self.request.query_params.get('limit')
 
-        # 1. カテゴリによる絞り込み（既存）
+        # 1. カテゴリによる絞り込み
         if category_id:
             try:
                 category = Category.objects.get(id=category_id)
@@ -27,31 +34,29 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             except Category.DoesNotExist:
                 queryset = Product.objects.none()
 
-        # 2. スペック情報（specifications JSONField）による動的な絞り込み（追加）
-        # URLパラメータに 'spec_項目名=値' が含まれている場合に対応
+        # 2. スペック情報による絞り込み
         for param, value in self.request.query_params.items():
             if param.startswith('spec_') and value:
                 # 'spec_cpu' から 'cpu' を取り出す
                 spec_key = param[len('spec_'):]
                 # カンマ区切りの値をリストに変換 (例: "8GB,16GB" -> ["8GB", "16GB"])
                 values = value.split(',')
+                queryset = queryset.filter(**{f'specifications__{spec_key}__in': values})
 
-                # JSONFieldでリスト内のいずれかに一致するものを検索 (__in を使用)
-                filter_kwargs = {f'specifications__{spec_key}__in': values}
-                queryset = queryset.filter(**filter_kwargs)
-
-        # 3. 検索キーワードによる絞り込み（既存）
+        # 3. 検索キーワードによる絞り込み
         if search_query:
             queryset = queryset.filter(
                 Q(name__icontains=search_query) |
                 Q(description__icontains=search_query)
             )
 
-        # 4. 並べ替え（既存）
-        if ordering:
-            queryset = queryset.order_by(ordering)
+        return queryset
+    def filter_queryset(self, queryset):
+        # まず OrderingFilter などのフィルタ・ソートを適用
+        queryset = super().filter_queryset(queryset)
 
-        # 5. 件数制限（既存）
+        # ソート確定後に limit によるスライスを適用
+        limit = self.request.query_params.get('limit')
         if limit:
             try:
                 queryset = queryset[:int(limit)]
@@ -59,7 +64,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
                 pass
 
         return queryset
-
+    
 class ProductComparisonView(APIView):
     @extend_schema(responses=ProductSerializer(many=True))
     def get(self, request):
