@@ -79,37 +79,47 @@
   ---
 
   ## 🏗 システム構成図
+──────────────────────────────                                                                                                                                                                             
+```mermaid
+graph TD
+    %% クライアント層
+    subgraph Client ["Client / Browser"]
+        User["User Browser"]
+        Auth["dj-rest-auth<br>(HttpOnly JWT)"]
+    end
 
+    %% 外部サービス層
+    subgraph External ["External Services"]
+        Stripe["Stripe (Payments)"]
+        Cloudinary["Cloudinary (Images)"]
+    end
 
-  ┌────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐                              
-  │ Client / Browser   │                                                      Django (REST Framework)                                                                           │                              
-  │                    │                                                                                                                                                        │                              
-  │                    │                                                                                                                                                        │                              
-  │ ┌────────────────┐ │                         ┌─────────────────────────┐            ┌───────────────────┐                   ┌───────────────────┐   ┌─────────────────────┐ │                              
-  │ │                │ │                         │                         │            │                   │                   │                   │   │                     │ │                              
-  │ │                │ │                         │        App Router       │            │                   │                   │                   │   │                     │ │                              
-  │ │  User Browser  ├◄┼HTTPS─/─HttpOnly─Cookie─►│                         ├◄─REST─API─►│ API Route / Proxy ├◄─Bearer─/─Cookie─►┤ DRF API Endpoints ├◄─►│     (PostgreSQL)    │ │                              
-  │ │                │ │                         │ (React 19 / TypeScript) │            │                   │         │         │                   │   │                     │ │                              
-  │ │                │ │                         │                         │            │                   │         │         │                   │   │                     │ │                              
-  │ └────────┬───────┘ │                         └─────────────────────────┘            └───────────────────┘         │         └─────────┬─────────┘   └─────────────────────┘ │                              
-  │          ▲         │                                                                                              │                   ▲                                     │                              
-  ├──────────┼─────────┘                                                                                              │                   │                                     │                              
-  │          │                                                                                                        │                   │                                     │                              
-  │          └─────────────────────┐                          ┌───────────────────────────────────────────────────────┘                   │                                     │                              
-  │                                │                          │                                                                           │                                     │                              
-  │                                │                          ▼                                                                           │                                     │                              
-  │ ┌────────────────┐      Stripe Elements      ┌─────────────────────────┐                                                              │             ┌─────────────────────┐ │                              
-  │ │                │             │             │                         │                                                              │             │                     │ │                              
-  │ │  dj-rest-auth  │             │             │                         │                                                              │             │                     │ │                              
-  │ │                │             └────────────►│    Stripe (Payments)    │                                                              └────────────►│ Cloudinary (Images) │ │                              
-  │ │ (HttpOnly JWT) │                           │                         │                                                                            │                     │ │                              
-  │ │                │                           │                         │                                                                            │                     │ │                              
-  │ └────────────────┘                           └─────────────────────────┘                                                                            └─────────────────────┘ │                              
-  │                                                                                                                                                                             │                              
-  └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘                              
-                                                                                                                                                                                                               
-                                                                                                                                                                                                               
+    %% フロントエンド層
+    subgraph Frontend ["Next.js (App Router / React 19 / TS)"]
+        AppRouter["App Router / Proxy"]
+        StripeElements["Stripe Elements"]
+    end
 
+    %% バックエンド層 (Django)
+    subgraph Backend ["Django (REST Framework)"]
+        API["DRF API Endpoints"]
+    end
+
+    %% データベース層
+    subgraph Database ["Database"]
+        DB[(PostgreSQL)]
+    end
+
+    %% 接続関係
+    User -->|HTTPS / HttpOnly Cookie| AppRouter
+    AppRouter -->|REST API / Bearer or Cookie| API
+    API <-->|SQL Queries| DB
+
+    %% 認証・外部連携
+    Auth -.->|Token / Cookie| AppRouter
+    StripeElements -->|Payment Request| Stripe
+    API -->|Image Upload / Media| Cloudinary                     
+```
 
   ---
 
