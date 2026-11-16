@@ -81,60 +81,44 @@
   ## 🏗 システム構成図
 ──────────────────────────────                                                                                                                                                                             
 ```mermaid
-  │ Diagram exceeds terminal width (637 > 208 cols)
-  │ Displayed as code block. Widen terminal to view inline.
+graph TD
+    %% クライアント層
+    subgraph Client ["Client / Browser"]
+        User["User Browser"]
+        Auth["dj-rest-auth<br>(HttpOnly JWT)"]
+    end
 
-    flowchart TB
-        %% クライアント層
-        subgraph ClientLayer ["クライアント層 (Client)"]
-            Browser["ブラウザ (User Browser)\n- React 19 UI\n- Stripe Elements"]
-        end
+    %% 外部サービス層
+    subgraph External ["External Services"]
+        Stripe["Stripe (Payments)"]
+        Cloudinary["Cloudinary (Images)"]
+    end
 
-        %% フロントエンド層
-        subgraph FrontendLayer ["フロントエンド層 (Vercel)"]
-            NextServer["Next.js App Router (TypeScript)\n- Server Components / SSR\n- Client Components\n- API Proxy"]
-        end
+    %% フロントエンド層
+    subgraph Frontend ["Next.js (App Router / React 19 / TS)"]
+        AppRouter["App Router / Proxy"]
+        StripeElements["Stripe Elements"]
+    end
 
-        %% バックエンド層
-        subgraph BackendLayer ["バックエンド層 (Cloud Hosting / PaaS)"]
-            subgraph DRFApp ["Django REST Framework"]
-                APIViews["REST API エンドポイント\n(Products / Cart / Orders)"]
-                AuthModule["認証基盤 (dj-rest-auth / SimpleJWT)\nHttpOnly Cookie 生成・検証"]
-                StockLogic["在庫制御 & トランザクション処理\n(排他制御 / 整合性担保)"]
-            end
-            DB[("PostgreSQL / SQLite\n- ユーザー・注文\n- 商品 (MPTT 階層構造)")]
-        end
+    %% バックエンド層 (Django)
+    subgraph Backend ["Django (REST Framework)"]
+        API["DRF API Endpoints"]
+    end
 
-        %% 外部サービス層
-        subgraph ExternalLayer ["外部サービス連携 (SaaS)"]
-            StripeAPI["Stripe API\n(決済インテント・カード決済)"]
-            CloudinaryAPI["Cloudinary CDN\n(商品画像ストレージ・配信)"]
-        end
+    %% データベース層
+    subgraph Database ["Database"]
+        DB[(PostgreSQL)]
+    end
 
-        %% 通信フロー
-        Browser <-->|1. HTTPS / UI表示| NextServer
-        Browser <-->|2. HttpOnly Cookie (JWT)\nAPIリクエスト (Proxy経由)| NextServer
-        NextServer <-->|3. REST API (JSON)\n認証トークン転送| APIViews
+    %% 接続関係
+    User -->|HTTPS / HttpOnly Cookie| AppRouter
+    AppRouter -->|REST API / Bearer or Cookie| API
+    API <-->|SQL Queries| DB
 
-        APIViews --- AuthModule
-        APIViews --- StockLogic
-        APIViews <-->|ORM 経由のクエリ / 排他ロック| DB
-
-        Browser -.->|決済トークン化 (PCI DSS準拠)| StripeAPI
-        StockLogic <-->|PaymentIntent 作成・確認| StripeAPI
-        APIViews <-->|画像アップロード・署名| CloudinaryAPI
-        Browser -.->|画像取得 (CDNキャッシュ)| CloudinaryAPI
-
-        %% スタイル調整
-        classDef client fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
-        classDef front fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
-        classDef back fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
-        classDef ext fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
-
-        class Browser client;
-        class NextServer front;
-        class APIViews,AuthModule,StockLogic,DB back;
-        class StripeAPI,CloudinaryAPI ext;                    
+    %% 認証・外部連携
+    Auth -.->|Token / Cookie| AppRouter
+    StripeElements -->|Payment Request| Stripe
+    API -->|Image Upload / Media| Cloudinary                     
 ```
 
   ---
