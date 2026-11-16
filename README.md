@@ -119,7 +119,7 @@ graph TD
     Auth -.->|Token / Cookie| AppRouter
     StripeElements -->|Payment Request| Stripe
     API -->|Image Upload / Media| Cloudinary                     
-
+```
 
   ---
 
