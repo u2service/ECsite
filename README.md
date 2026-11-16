@@ -81,7 +81,7 @@
   ## 🏗 システム構成図
 ──────────────────────────────                                                                                                                                                                             
 ```mermaid
-flowchart TB
+graph TD
     %% クライアント層
     subgraph ClientLayer ["クライアント層 (Client)"]
         Browser["ブラウザ (User Browser)\n- React 19 UI\n- Stripe Elements"]
@@ -131,8 +131,7 @@ flowchart TB
     class Browser client;
     class NextServer front;
     class APIViews,AuthModule,StockLogic,DB back;
-    class StripeAPI,CloudinaryAPI ext;
-                 
+    class StripeAPI,CloudinaryAPI ext;                     
 ```
 
   ---
