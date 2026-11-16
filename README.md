@@ -8,10 +8,8 @@
   ## 🌐 デモサイト・主要リンク
 
   - **フロントエンド デモ**: https://e-csite-neon.vercel.app/
-  - **API仕様書 (Swagger/OpenAPI)**: `/api/schema/swagger-ui/` *(または公開URL)*
-  - **テスト用アカウント**:
-    - 一般ユーザー: `testuser@example.com` / `password123`
-    - 管理者ユーザー: `admin@example.com` / `adminpassword123`
+  - **API仕様書 (Swagger/OpenAPI)**: https://e-csite-neon.vercel.app/api/docs/
+
 
   ---
 
@@ -144,8 +142,8 @@ class StripeAPI,CloudinaryAPI ext;
 
   ### 1. リポジトリのクローン
   ```bash
-  git clone https://github.com/your-username/Http0206.git
-  cd Http0206
+  git clone https://github.com/u2service/ECsite.git
+  cd ECsite
   ```
 
   ### 2. バックエンドのセットアップ
