@@ -12,10 +12,6 @@ export default function Header(): React.ReactElement {
           My EC Store
         </Link>
 
-        <Link href="/portfolio" className="hover:text-gray-300 transition-colors">
-          ポートフォリオを見る
-        </Link>
-
         {/* 検索バーは通常入力を伴うので CC のまま (後で最適化可能) */}
         <Suspense fallback={<div className="w-48 h-8 bg-gray-700 rounded-md animate-pulse" />}>
           <SearchBar />
