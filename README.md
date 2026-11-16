@@ -7,7 +7,7 @@
 
   ## 🌐 デモサイト・主要リンク
 
-  - **フロントエンド デモ**: https://your-frontend-domain.vercel.app *(※デモURLがあれば記載)*
+  - **フロントエンド デモ**: https://e-csite-neon.vercel.app/
   - **API仕様書 (Swagger/OpenAPI)**: `/api/schema/swagger-ui/` *(または公開URL)*
   - **テスト用アカウント**:
     - 一般ユーザー: `testuser@example.com` / `password123`
