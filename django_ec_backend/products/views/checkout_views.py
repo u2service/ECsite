@@ -85,6 +85,12 @@ class CreateCheckoutSessionView(APIView):
                     except Exception:
                         # Stripe側で何らかの理由で失効していた場合は、例外をスルーして新規作成へ流す
                         pass
+
+        # ==========================================
+        # order を None で初期化しておく
+        # ==========================================
+        order = None  # ← ① NameError を防ぐための初期化
+        
         # ==========================================
         # 在庫チェック＋Order作成＋Stripeセッション作成
         # ==========================================
@@ -92,6 +98,7 @@ class CreateCheckoutSessionView(APIView):
             with transaction.atomic():
                 cart_items = list(cart.items.select_related('product').all())
 
+                # 在庫チェック
                 for item in cart_items:
                     # 競合を防ぐため、対象のProductレコードにロックをかける
                     product = Product.objects.select_for_update().get(id=item.product.id)
@@ -101,40 +108,40 @@ class CreateCheckoutSessionView(APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
-            # 送料の計算
-            shipping_total = 0
-            for item in cart_items:
-                try:
-                    postage = Postage.objects.get(prefecture=prefecture, size=item.product.shipping_size)
-                    shipping_total += postage.cost * item.quantity
-                except Postage.DoesNotExist:
-                    return Response({'error': f'{prefecture}への送料設定が見つかりません。'}, status=status.HTTP_400_BAD_REQUEST)
+                # 送料の計算
+                shipping_total = 0
+                for item in cart_items:
+                    try:
+                        postage = Postage.objects.get(prefecture=prefecture, size=item.product.shipping_size)
+                        shipping_total += postage.cost * item.quantity
+                    except Postage.DoesNotExist:
+                        return Response({'error': f'{prefecture}への送料設定が見つかりません。'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # 金額算出
-            items_total = sum(item.product.price * item.quantity for item in cart_items)
-            grand_total = items_total + shipping_total
+                # 金額算出
+                items_total = sum(item.product.price * item.quantity for item in cart_items)
+                grand_total = items_total + shipping_total
 
-            # Orderオブジェクトの作成（仮押さえステータスと、30分後の有効期限をセット）
-            now = timezone.now()
-            reservation_deadline = now + timedelta(minutes=30)
+                # Orderオブジェクトの作成（仮押さえステータスと、30分後の有効期限をセット）
+                now = timezone.now()
+                reservation_deadline = now + timedelta(minutes=30)
 
-            order = Order.objects.create(
-                user=request.user,
-                total_amount=grand_total,
-                shipping_cost=shipping_total,
-                full_name='',
-                email=request.user.email,
-                shipping_address='',
-                status='pending_reservation', 
-                reserved_until=reservation_deadline 
-            )
-            for item in cart_items:
-                OrderItem.objects.create(
-                    order=order,
-                    product=item.product,
-                    quantity=item.quantity,
-                    price=item.product.price
+                order = Order.objects.create(
+                    user=request.user,
+                    total_amount=grand_total,
+                    shipping_cost=shipping_total,
+                    full_name='',
+                    email=request.user.email,
+                    shipping_address='',
+                    status='pending_reservation', 
+                    reserved_until=reservation_deadline 
                 )
+                for item in cart_items:
+                    OrderItem.objects.create(
+                        order=order,
+                        product=item.product,
+                        quantity=item.quantity,
+                        price=item.product.price
+                    )
 
             # Stripe用のline_items作成
             line_items = []
@@ -182,7 +189,8 @@ class CreateCheckoutSessionView(APIView):
             return JsonResponse({'id': checkout_session.id, 'url': checkout_session.url})
           
         except Exception as e:
-            order.delete()
+            if order is not None and order.pk is not None:
+                order.delete()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
