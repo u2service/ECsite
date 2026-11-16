@@ -2,6 +2,7 @@ import React from 'react';
 import ProductCard from '@/components/ProductCard';
 import ProductListClient from '@/components/ProductListClient';
 import NewArrivals from '@/components/NewArrivals';
+import { Product } from '@/types/product';
 
 // ==========================================
 // 💡 型定義（Interfaces）
@@ -20,7 +21,7 @@ interface HomeProps {
 // ==========================================
 // 🌐 データフェッチ関数
 // ==========================================
-async function getProducts(params: GetProductsParams = {}): Promise<any[]> {
+async function getProducts(params: GetProductsParams = {}): Promise<Product[]> {
   const { q = '', ordering = '', limit = '' } = params;
   let url = `${process.env.NEXT_PUBLIC_API_URL}/api/products/?`;
   if (q) url += `q=${encodeURIComponent(q)}&`;
