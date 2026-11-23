@@ -88,6 +88,10 @@ export default function ProductCard({
               {product.name}
             </h2>
             
+            <h2 className="text-sm font-semibold truncate h-10 line-clamp-2 text-slate-800 mt-0.5">
+              在庫数：{product.stock}
+            </h2>
+
             {/* 価格とコメント数を並べて表示 */}
             <div className="flex justify-between items-center mt-2">
               <p className="text-gray-800 font-bold">
