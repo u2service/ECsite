@@ -1,5 +1,8 @@
   # フルスタックECプラットフォーム (Next.js × Django REST Framework)
 
+<img width="1915" height="912" alt="ECsite" src="https://github.com/user-attachments/assets/98942c13-a31d-47df-8111-7162fc805cc3" />
+
+
   Next.js (App Router) と Django REST Framework (DRF) を分離構成で構築した、実践的なフルスタックECサイトのポートフォリオです。
   実務を意識した「セキュアな認証設計」「型安全なAPI連携」「在庫排他制御」「E2Eテストによる品質担保」に重点を置いて開発しました。
 
